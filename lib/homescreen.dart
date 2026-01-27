@@ -199,7 +199,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 onTap: () {
                  Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const CollageListScreen()),
+      MaterialPageRoute(builder: (context) =>  const CollageListScreen()),
     );
                 },
               ),

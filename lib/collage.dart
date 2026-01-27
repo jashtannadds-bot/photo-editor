@@ -1,4 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:photho_editor/circlecollage.dart';
+import 'package:photho_editor/diamondcollage.dart';
+import 'package:photho_editor/flowercollage.dart';
+import 'package:photho_editor/gridcollage.dart';
+import 'package:photho_editor/heartcollage.dart';
+import 'package:photho_editor/heartflower.dart';
+import 'package:photho_editor/mickycollage.dart';
+import 'package:photho_editor/moodboardcollage.dart';
+import 'package:photho_editor/pentagon.dart';
+import 'package:photho_editor/filmcollage.dart';
+import 'package:photho_editor/starcollage.dart';
 // Import your other screens here
 // import 'star_collage_screen.dart';
 // import 'heart_collage_screen.dart';
@@ -9,29 +20,65 @@ class CollageListScreen extends StatelessWidget {
 
   final List<Map<String, dynamic>> layouts = const [
     {
-      "name": "Classic Heart",
+      "name": "Heart",
       "icon": Icons.favorite,
       "color": Colors.pinkAccent,
-      "route": "heart"
+      "route": "heart",
     },
     {
-      "name": "Shining Star",
+      "name": "Star",
       "icon": Icons.star,
       "color": Colors.amber,
-      "route": "star"
+      "route": "star",
     },
     {
-      "name": "Curved Circle",
+      "name": "Bubble",
       "icon": Icons.tonality,
       "color": Colors.blueAccent,
-      "route": "curved"
+      "route": "curved",
     },
     {
       "name": "Square Grid",
       "icon": Icons.grid_view,
       "color": Colors.greenAccent,
-      "route": "grid"
+      "route": "grid",
     },
+    {
+      "name": "Mickey Mouse",
+      "icon": Icons.face, // Or use a custom SVG if you have one
+      "color": Colors.redAccent,
+      "route": "mickey",
+    },
+    {
+    "name": "Flower Bloom",
+    "icon": Icons.local_florist,
+    "color": Colors.orangeAccent,
+    "route": "flower",
+  },
+  {
+    "name": "Pentagon", // New name for the Pentagon
+    "icon": Icons.pentagon_outlined,
+    "color": Colors.deepPurpleAccent,
+    "route": "pentagon",
+  },
+  {
+  "name": "Aura Diamond",
+  "icon": Icons.blur_on, // Gives a "shutter" vibe
+  "color": Colors.cyanAccent,
+  "route": "diamond",
+},
+{
+  "name": "Moodboard Muse",
+  "icon": Icons.auto_awesome_mosaic_rounded,
+  "color": Colors.white,
+  "route": "moodboard",
+},
+{
+  "name": "Flim Strip",
+  "icon": Icons.movie,
+  "color": Colors.pinkAccent,
+  "route": "Flim",
+},
   ];
 
   @override
@@ -39,7 +86,10 @@ class CollageListScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
-        title: const Text("Select Layout", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          "Select Layout",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.black,
         elevation: 0,
       ),
@@ -59,11 +109,83 @@ class CollageListScreen extends StatelessWidget {
               onTap: () {
                 // NAVIGATION LOGIC
                 if (layout['route'] == 'star') {
-                   // Navigator.push(context, MaterialPageRoute(builder: (context) => const StarCollageScreen()));
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const CollageEditorScreen(),
+                    ),
+                  );
                 } else if (layout['route'] == 'heart') {
-                   // Navigator.push(context, MaterialPageRoute(builder: (context) => const CenterHeartCollageScreen()));
-                } else if (layout['route'] == 'curved') {
-                   // Navigator.push(context, MaterialPageRoute(builder: (context) => const CurvedGridCollageScreen()));
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const CenterHeartCollageScreen(),
+                    ),
+                  );
+                } 
+                else if (layout['route'] == 'grid') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DynamicGridCollageScreen(),
+                    ),
+                  );
+                }
+                else if (layout['route'] == 'mickey') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const MickeyFinalDesign(),
+                    ),
+                  );
+                }
+                 else if (layout['route'] == 'curved') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const BubbleCollageScreen(),
+                    ),
+                  );
+                }
+                else if (layout['route'] == 'flower') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const FlowerCollageScreen(),
+                    ),
+                  );
+                }
+                else if (layout['route'] == 'pentagon') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const PuzzleCollageScreen(),
+                    ),
+                  );
+                }
+                else if (layout['route'] == 'diamond') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ProCameraLensCollage(),
+                    ),
+                  );
+                }
+                else if (layout['route'] == 'moodboard') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const MoodboardMuseCollage(),
+                    ),
+                  );
+                }
+                else if (layout['route'] == 'Flim') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AuraCollageScreen(),
+                    ),
+                  );
                 }
               },
               child: Container(
