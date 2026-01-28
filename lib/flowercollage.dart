@@ -2,6 +2,8 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:photho_editor/collageimagehelper.dart';
+// import 'collage_helper.dart'; // Make sure this is imported
 
 class FlowerCollageScreen extends StatefulWidget {
   const FlowerCollageScreen({super.key});
@@ -14,6 +16,9 @@ class _FlowerCollageScreenState extends State<FlowerCollageScreen> {
   final ImagePicker picker = ImagePicker();
   List<File?> images = List.filled(6, null); // 0 = Center, 1-5 = Petals
 
+  // 1. Create the capture key
+  final GlobalKey _flowerKey = GlobalKey();
+
   Future<void> pickImage(int index) async {
     final picked = await picker.pickImage(source: ImageSource.gallery);
     if (picked != null) setState(() => images[index] = File(picked.path));
@@ -21,42 +26,71 @@ class _FlowerCollageScreenState extends State<FlowerCollageScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final double size = MediaQuery.of(context).size.width * 0.9;
+    final double size = MediaQuery.of(context).size.width * 0.95;
     final double centerSize = size * 0.35;
     final double petalSize = size * 0.32;
-    final double radius = size * 0.28; // Distance of petals from center
+    final double radius = size * 0.28; 
 
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: Colors.pinkAccent,
+        tooltip: 'Save Collage',
+        onPressed: () => CollageHelper.saveCollage(_flowerKey, context),
+        label: const Text("Save"),
+        icon: const Icon(Icons.download_rounded),
+      ),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent, 
+        elevation: 0,
+        leading: const BackButton(color: Colors.white),
+        title: const Text("Floral Fusion", style: TextStyle(color: Colors.white, fontSize: 16)),
+        // 2. Add Save Button
+        actions: [
+          // IconButton(
+          //   icon: const Icon(Icons.download_rounded, color: Colors.white),
+          //   onPressed: () => CollageHelper.saveCollage(_flowerKey, context),
+          // ),
+          // const SizedBox(width: 8),
+        ],
+      ),
       body: Center(
-        child: SizedBox(
-          width: size,
-          height: size,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              // Draw 5 Petals using Math (Sin/Cos for perfect placement)
-              ...List.generate(5, (index) {
-                double angle = (index * 72) * (math.pi / 180);
-                return Positioned(
-                  left: (size / 2) + radius * math.cos(angle) - (petalSize / 2),
-                  top: (size / 2) + radius * math.sin(angle) - (petalSize / 2),
-                  child: _buildCircle(index + 1, petalSize),
-                );
-              }),
+        // 3. Wrap everything in RepaintBoundary and a Container for the background
+        child: RepaintBoundary(
+          key: _flowerKey,
+          child: Container(
+            width: size,
+            height: size,
+            color: Colors.black, // Crucial for capturing the border glow correctly
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Draw 5 Petals
+                ...List.generate(5, (index) {
+                  double angle = (index * 72) * (math.pi / 180);
+                  return Positioned(
+                    left: (size / 2) + radius * math.cos(angle) - (petalSize / 2),
+                    top: (size / 2) + radius * math.sin(angle) - (petalSize / 2),
+                    child: _buildCircle(index + 1, petalSize),
+                  );
+                }),
 
-              // Center Core
-              _buildCircle(0, centerSize),
+                // Center Core
+                _buildCircle(0, centerSize),
 
-              // Seamless Border Overlay
-              IgnorePointer(
-                child: CustomPaint(
-                  size: Size(size, size),
-                  painter: FlowerBorderPainter(radius: radius, centerSize: centerSize, petalSize: petalSize),
+                // Seamless Border Overlay
+                IgnorePointer(
+                  child: CustomPaint(
+                    size: Size(size, size),
+                    painter: FlowerBorderPainter(
+                      radius: radius, 
+                      centerSize: centerSize, 
+                      petalSize: petalSize
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -72,13 +106,19 @@ class _FlowerCollageScreenState extends State<FlowerCollageScreen> {
           color: const Color(0xFF1A1A1A),
           child: images[index] == null
               ? const Icon(Icons.add, color: Colors.white24, size: 20)
-              : InteractiveViewer(child: Image.file(images[index]!, fit: BoxFit.cover)),
+              : InteractiveViewer(
+                  boundaryMargin: const EdgeInsets.all(double.infinity),
+                  minScale: 0.1,
+                  maxScale: 5.0,
+                  child: Image.file(images[index]!, fit: BoxFit.cover),
+                ),
         ),
       ),
     );
   }
 }
 
+// Border Painter stays the same as your original
 class FlowerBorderPainter extends CustomPainter {
   final double radius, centerSize, petalSize;
   FlowerBorderPainter({required this.radius, required this.centerSize, required this.petalSize});
@@ -88,10 +128,8 @@ class FlowerBorderPainter extends CustomPainter {
     final Path path = Path();
     final Offset center = Offset(size.width / 2, size.height / 2);
 
-    // Add Center
     path.addOval(Rect.fromCircle(center: center, radius: centerSize / 2));
 
-    // Add Petals to the same path to fuse them
     for (int i = 0; i < 5; i++) {
       double angle = (i * 72) * (math.pi / 180);
       Offset petalCenter = Offset(center.dx + radius * math.cos(angle), center.dy + radius * math.sin(angle));

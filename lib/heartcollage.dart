@@ -1,6 +1,12 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:gal/gal.dart'; // Modern saving library
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class CenterHeartCollageScreen extends StatefulWidget {
   const CenterHeartCollageScreen({super.key});
@@ -11,9 +17,58 @@ class CenterHeartCollageScreen extends StatefulWidget {
 }
 
 class _CenterHeartCollageScreenState extends State<CenterHeartCollageScreen> {
+  final GlobalKey _boundaryKey = GlobalKey();
   final ImagePicker picker = ImagePicker();
   List<File?> gridImages = List.filled(4, null);
   File? heartImage;
+
+  Future<void> _saveCollage() async {
+    try {
+      // 1. Check/Request Permissions
+      final hasAccess = await Gal.hasAccess();
+      if (!hasAccess) {
+        await Gal.requestAccess();
+      }
+
+      // 2. Capture the Widget as an Image
+      RenderRepaintBoundary? boundary =
+          _boundaryKey.currentContext?.findRenderObject()
+              as RenderRepaintBoundary?;
+      if (boundary == null) return;
+
+      ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      ByteData? byteData = await image.toByteData(
+        format: ui.ImageByteFormat.png,
+      );
+      Uint8List pngBytes = byteData!.buffer.asUint8List();
+
+      // 3. Save to a temporary file first
+      final tempDir = await getTemporaryDirectory();
+      final file = await File(
+        '${tempDir.path}/heart_collage_${DateTime.now().millisecondsSinceEpoch}.png',
+      ).create();
+      await file.writeAsBytes(pngBytes);
+
+      // 4. Save to Gallery
+      await Gal.putImage(file.path);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("✨ Collage saved to Gallery!"),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint("Save Error: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
 
   Future<void> pickImage(int index, bool isHeart) async {
     final picked = await picker.pickImage(source: ImageSource.gallery);
@@ -34,6 +89,12 @@ class _CenterHeartCollageScreenState extends State<CenterHeartCollageScreen> {
 
     return Scaffold(
       backgroundColor: Colors.black,
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: Colors.pinkAccent,
+        onPressed: _saveCollage,
+        label: const Text("Save"),
+        icon: const Icon(Icons.download_rounded),
+      ),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -43,59 +104,58 @@ class _CenterHeartCollageScreenState extends State<CenterHeartCollageScreen> {
         ),
       ),
       extendBodyBehindAppBar: true,
-      body: Stack(
-        alignment: Alignment.center,
-        children: [
-          /// 1. FULL SCREEN BACKGROUND GRID
-          Column(
-            children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    _buildInteractiveTile(0),
-                    _buildInteractiveTile(1),
-                  ],
+      body: RepaintBoundary(
+        key: _boundaryKey,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            /// 1. Background Grid
+            Column(
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      _buildInteractiveTile(0),
+                      _buildInteractiveTile(1),
+                    ],
+                  ),
                 ),
-              ),
-              Expanded(
-                child: Row(
-                  children: [
-                    _buildInteractiveTile(2),
-                    _buildInteractiveTile(3),
-                  ],
+                Expanded(
+                  child: Row(
+                    children: [
+                      _buildInteractiveTile(2),
+                      _buildInteractiveTile(3),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
 
-          /// 2. THE CLASSIC HEART (Sharp & Sleek)
-          Center(
-            child: SizedBox(
-              width: heartSize,
-              height: heartSize,
-              child: Stack(
-                children: [
-                  // THE CLIPPED IMAGE
-                  ClipPath(
-                    clipper: PerfectHeartClipper(),
-                    child: Container(
-                      width: heartSize,
-                      height: heartSize,
-                      color: Colors.white.withOpacity(0.15),
-                      child: heartImage == null
-                          ? GestureDetector(
-                              onTap: () => pickImage(0, true),
-                              child: const Center(
-                                child: Icon(
-                                  Icons.favorite,
-                                  size: 50,
-                                  color: Colors.white54,
+            /// 2. The Heart Lobe
+            Center(
+              child: SizedBox(
+                width: heartSize,
+                height: heartSize,
+                child: Stack(
+                  children: [
+                    ClipPath(
+                      clipper: PerfectHeartClipper(),
+                      child: Container(
+                        width: heartSize,
+                        height: heartSize,
+                        color: Colors.white.withOpacity(0.15),
+                        child: heartImage == null
+                            ? GestureDetector(
+                                onTap: () => pickImage(0, true),
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.favorite,
+                                    size: 50,
+                                    color: Colors.white54,
+                                  ),
                                 ),
-                              ),
-                            )
-                          : GestureDetector(
-                              onDoubleTap: () => pickImage(0, true),
-                              child: InteractiveViewer(
+                              )
+                            : InteractiveViewer(
                                 clipBehavior: Clip.hardEdge,
                                 boundaryMargin: const EdgeInsets.all(
                                   double.infinity,
@@ -105,26 +165,22 @@ class _CenterHeartCollageScreenState extends State<CenterHeartCollageScreen> {
                                 child: Image.file(
                                   heartImage!,
                                   fit: BoxFit.cover,
-                                  width: heartSize,
-                                  height: heartSize,
                                 ),
                               ),
-                            ),
+                      ),
                     ),
-                  ),
-
-                  // THE STICKER BORDER
-                  IgnorePointer(
-                    child: CustomPaint(
-                      size: Size(heartSize, heartSize),
-                      painter: PerfectHeartPainter(),
+                    IgnorePointer(
+                      child: CustomPaint(
+                        size: Size(heartSize, heartSize),
+                        painter: PerfectHeartPainter(),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -133,9 +189,7 @@ class _CenterHeartCollageScreenState extends State<CenterHeartCollageScreen> {
     return Expanded(
       child: GestureDetector(
         onTap: gridImages[index] == null ? () => pickImage(index, false) : null,
-        onLongPress: gridImages[index] != null
-            ? () => pickImage(index, false)
-            : null,
+        onLongPress: () => pickImage(index, false),
         child: Container(
           decoration: BoxDecoration(
             border: Border.all(
@@ -155,11 +209,9 @@ class _CenterHeartCollageScreenState extends State<CenterHeartCollageScreen> {
               : InteractiveViewer(
                   clipBehavior: Clip.hardEdge,
                   boundaryMargin: const EdgeInsets.all(double.infinity),
-                  minScale: 0.5,
+                  minScale: 0.1,
                   maxScale: 5,
-                  child: SizedBox.expand(
-                    child: Image.file(gridImages[index]!, fit: BoxFit.cover),
-                  ),
+                  child: Image.file(gridImages[index]!, fit: BoxFit.cover),
                 ),
         ),
       ),
@@ -167,22 +219,15 @@ class _CenterHeartCollageScreenState extends State<CenterHeartCollageScreen> {
   }
 }
 
-/// --- MATHEMATICALLY BALANCED CLASSIC HEART ---
+/// --- MATH & PAINTERS ---
 
 Path _getClassicHeartPath(Size size) {
   Path path = Path();
   final double w = size.width;
   final double h = size.height;
-
-  // Start at the top center dip
   path.moveTo(w / 2, h * 0.3);
-
-  // Left Lobe
   path.cubicTo(w * 0.2, h * 0.1, -w * 0.05, h * 0.45, w / 2, h * 0.92);
-
-  // Right Lobe (Mirroring the left)
   path.cubicTo(w * 1.05, h * 0.45, w * 0.8, h * 0.1, w / 2, h * 0.3);
-
   path.close();
   return path;
 }
@@ -200,9 +245,8 @@ class PerfectHeartPainter extends CustomPainter {
     Paint paint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 12.0
-      ..strokeJoin = StrokeJoin
-          .round // Smooths the joint at the top dip
+      ..strokeWidth = 10.0
+      ..strokeJoin = StrokeJoin.round
       ..strokeCap = StrokeCap.round;
 
     canvas.drawPath(_getClassicHeartPath(size), paint);

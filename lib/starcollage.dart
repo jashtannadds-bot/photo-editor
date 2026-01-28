@@ -2,6 +2,9 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:photho_editor/collageimagehelper.dart';
+// Ensure this matches the filename where you put the save logic
+// import 'collage_helper.dart'; 
 
 class CollageEditorScreen extends StatefulWidget {
   const CollageEditorScreen({super.key});
@@ -14,6 +17,9 @@ class _CollageEditorScreenState extends State<CollageEditorScreen> {
   final ImagePicker picker = ImagePicker();
   List<File?> gridImages = List.filled(4, null);
   File? overlayImage;
+
+  // 1. Define the GlobalKey for capturing the image
+  final GlobalKey _collageKey = GlobalKey();
 
   Future<void> pickImage(int index, bool isOverlay) async {
     final picked = await picker.pickImage(source: ImageSource.gallery);
@@ -34,6 +40,13 @@ class _CollageEditorScreenState extends State<CollageEditorScreen> {
 
     return Scaffold(
       backgroundColor: Colors.black,
+       floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: Colors.pinkAccent,
+        tooltip: 'Save Collage',
+        onPressed: () => CollageHelper.saveCollage(_collageKey, context),
+        label: const Text("Save"),
+        icon: const Icon(Icons.download_rounded),
+      ),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -41,90 +54,99 @@ class _CollageEditorScreenState extends State<CollageEditorScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
+        // 2. Add the Save Button here
+        actions: [
+          // IconButton(
+          //   icon: const Icon(Icons.download_rounded, color: Colors.white),
+          //   tooltip: 'Save Collage',
+          //   onPressed: () => CollageHelper.saveCollage(_collageKey, context),
+          // ),
+          const SizedBox(width: 10),
+        ],
       ),
       extendBodyBehindAppBar: true,
-      body: Stack(
-        alignment: Alignment.center,
-        children: [
-          /// 1. FULL SCREEN BACKGROUND GRID
-          Column(
-            children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    _buildInteractiveTile(0),
-                    _buildInteractiveTile(1),
-                  ],
+      // 3. Wrap everything in RepaintBoundary to capture the full screen
+      body: RepaintBoundary(
+        key: _collageKey,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            /// 1. FULL SCREEN BACKGROUND GRID
+            Column(
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      _buildInteractiveTile(0),
+                      _buildInteractiveTile(1),
+                    ],
+                  ),
                 ),
-              ),
-              Expanded(
-                child: Row(
-                  children: [
-                    _buildInteractiveTile(2),
-                    _buildInteractiveTile(3),
-                  ],
+                Expanded(
+                  child: Row(
+                    children: [
+                      _buildInteractiveTile(2),
+                      _buildInteractiveTile(3),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
 
-          /// 2. CENTERED STAR (With Fix for Normal Size Drag)
-          Center(
-            child: SizedBox(
-              width: starSize,
-              height: starSize,
-              child: Stack(
-                children: [
-                  ClipPath(
-                    clipper: StarClipper(),
-                    child: Container(
-                      width: starSize,
-                      height: starSize,
-                      color: Colors.white.withOpacity(0.15),
-                      child: overlayImage == null
-                          ? GestureDetector(
-                              onTap: () => pickImage(0, true),
-                              child: const Center(
-                                child: Icon(
-                                  Icons.add_circle_outline,
-                                  size: 50,
-                                  color: Colors.white54,
+            /// 2. CENTERED STAR
+            Center(
+              child: SizedBox(
+                width: starSize,
+                height: starSize,
+                child: Stack(
+                  children: [
+                    ClipPath(
+                      clipper: StarClipper(),
+                      child: Container(
+                        width: starSize,
+                        height: starSize,
+                        color: Colors.white.withOpacity(0.15),
+                        child: overlayImage == null
+                            ? GestureDetector(
+                                onTap: () => pickImage(0, true),
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.add_circle_outline,
+                                    size: 50,
+                                    color: Colors.white54,
+                                  ),
+                                ),
+                              )
+                            : GestureDetector(
+                                onDoubleTap: () => pickImage(0, true),
+                                child: InteractiveViewer(
+                                  clipBehavior: Clip.hardEdge,
+                                  boundaryMargin: const EdgeInsets.all(double.infinity),
+                                  minScale: 0.5,
+                                  maxScale: 5,
+                                  child: Image.file(
+                                    overlayImage!,
+                                    fit: BoxFit.cover,
+                                    width: starSize,
+                                    height: starSize,
+                                  ),
                                 ),
                               ),
-                            )
-                          : GestureDetector(
-                              onDoubleTap: () => pickImage(0, true),
-                              child: InteractiveViewer(
-                                clipBehavior: Clip.hardEdge,
-                                // FIX: Allows dragging at normal (1.0) scale
-                                boundaryMargin: const EdgeInsets.all(
-                                  double.infinity,
-                                ),
-                                minScale: 0.5,
-                                maxScale: 5,
-                                child: Image.file(
-                                  overlayImage!,
-                                  fit: BoxFit.cover,
-                                  // Set a fixed size so InteractiveViewer has a frame of reference
-                                  width: starSize,
-                                  height: starSize,
-                                ),
-                              ),
-                            ),
+                      ),
                     ),
-                  ),
 
-                  IgnorePointer(
-                    child: CustomPaint(
-                      size: Size(starSize, starSize),
-                      painter: StarBorderPainter(),
+                    IgnorePointer(
+                      child: CustomPaint(
+                        size: Size(starSize, starSize),
+                        painter: StarBorderPainter(),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -154,7 +176,6 @@ class _CollageEditorScreenState extends State<CollageEditorScreen> {
                 )
               : InteractiveViewer(
                   clipBehavior: Clip.hardEdge,
-                  // FIX: Allows dragging at normal size in the grid too
                   boundaryMargin: const EdgeInsets.all(double.infinity),
                   minScale: 0.5,
                   maxScale: 5,
@@ -171,31 +192,24 @@ class _CollageEditorScreenState extends State<CollageEditorScreen> {
   }
 }
 
-/// --- STAR PATH ---
-
+// --- STAR PATH LOGIC ---
 Path _getStarPath(Size size) {
   final path = Path();
   final double width = size.width;
   final double height = size.height;
-
   final double centerX = width / 2;
   final double centerY = (height / 2) + (height * 0.05);
-
   final double outerRadius = width / 2;
   final double innerRadius = outerRadius * 0.4;
   const int points = 5;
-
   double angle = -math.pi / 2;
   const double angleStep = math.pi / points;
-
   for (int i = 0; i < points * 2; i++) {
     double radius = i.isEven ? outerRadius : innerRadius;
     double x = centerX + math.cos(angle) * radius;
     double y = centerY + math.sin(angle) * radius;
-    if (i == 0)
-      path.moveTo(x, y);
-    else
-      path.lineTo(x, y);
+    if (i == 0) path.moveTo(x, y);
+    else path.lineTo(x, y);
     angle += angleStep;
   }
   path.close();
@@ -203,10 +217,8 @@ Path _getStarPath(Size size) {
 }
 
 class StarClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) => _getStarPath(size);
-  @override
-  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+  @override Path getClip(Size size) => _getStarPath(size);
+  @override bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
 
 class StarBorderPainter extends CustomPainter {
@@ -218,10 +230,7 @@ class StarBorderPainter extends CustomPainter {
       ..strokeWidth = 10.0
       ..strokeJoin = StrokeJoin.round
       ..strokeCap = StrokeCap.round;
-
     canvas.drawPath(_getStarPath(size), paint);
   }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
+  @override bool shouldRepaint(CustomPainter oldDelegate) => false;
 }

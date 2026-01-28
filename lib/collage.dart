@@ -4,11 +4,11 @@ import 'package:photho_editor/diamondcollage.dart';
 import 'package:photho_editor/flowercollage.dart';
 import 'package:photho_editor/gridcollage.dart';
 import 'package:photho_editor/heartcollage.dart';
-import 'package:photho_editor/heartflower.dart';
 import 'package:photho_editor/mickycollage.dart';
 import 'package:photho_editor/moodboardcollage.dart';
 import 'package:photho_editor/pentagon.dart';
 import 'package:photho_editor/filmcollage.dart';
+import 'package:photho_editor/polloariodcollage.dart';
 import 'package:photho_editor/starcollage.dart';
 // Import your other screens here
 // import 'star_collage_screen.dart';
@@ -78,6 +78,12 @@ class CollageListScreen extends StatelessWidget {
   "icon": Icons.movie,
   "color": Colors.pinkAccent,
   "route": "Flim",
+},
+{
+  "name": "polloariod",
+  "icon": Icons.filter_frames_outlined,
+  "color": Colors.limeAccent,
+  "route": "polloariod",
 },
   ];
 
@@ -184,6 +190,14 @@ class CollageListScreen extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (context) => const AuraCollageScreen(),
+                    ),
+                  );
+                }
+                 else if (layout['route'] == 'polloariod') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const HangingBulbCollage(),
                     ),
                   );
                 }
