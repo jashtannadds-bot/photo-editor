@@ -9,6 +9,7 @@ import 'package:photho_editor/moodboardcollage.dart';
 import 'package:photho_editor/pentagon.dart';
 import 'package:photho_editor/filmcollage.dart';
 import 'package:photho_editor/polloariodcollage.dart';
+import 'package:photho_editor/slitscancollage.dart';
 import 'package:photho_editor/starcollage.dart';
 // Import your other screens here
 // import 'star_collage_screen.dart';
@@ -50,41 +51,47 @@ class CollageListScreen extends StatelessWidget {
       "route": "mickey",
     },
     {
-    "name": "Flower Bloom",
-    "icon": Icons.local_florist,
-    "color": Colors.orangeAccent,
-    "route": "flower",
-  },
-  {
-    "name": "Pentagon", // New name for the Pentagon
-    "icon": Icons.pentagon_outlined,
-    "color": Colors.deepPurpleAccent,
-    "route": "pentagon",
-  },
-  {
-  "name": "Aura Diamond",
-  "icon": Icons.blur_on, // Gives a "shutter" vibe
-  "color": Colors.cyanAccent,
-  "route": "diamond",
-},
-{
-  "name": "Moodboard Muse",
-  "icon": Icons.auto_awesome_mosaic_rounded,
-  "color": Colors.white,
-  "route": "moodboard",
-},
-{
-  "name": "Flim Strip",
-  "icon": Icons.movie,
-  "color": Colors.pinkAccent,
-  "route": "Flim",
-},
-{
-  "name": "polloariod",
-  "icon": Icons.filter_frames_outlined,
-  "color": Colors.limeAccent,
-  "route": "polloariod",
-},
+      "name": "Flower Bloom",
+      "icon": Icons.local_florist,
+      "color": Colors.orangeAccent,
+      "route": "flower",
+    },
+    {
+      "name": "Pentagon", // New name for the Pentagon
+      "icon": Icons.pentagon_outlined,
+      "color": Colors.deepPurpleAccent,
+      "route": "pentagon",
+    },
+    {
+      "name": "Aura Diamond",
+      "icon": Icons.blur_on, // Gives a "shutter" vibe
+      "color": Colors.cyanAccent,
+      "route": "diamond",
+    },
+    {
+      "name": "Moodboard Muse",
+      "icon": Icons.auto_awesome_mosaic_rounded,
+      "color": Colors.white,
+      "route": "moodboard",
+    },
+    {
+      "name": "Flim Strip",
+      "icon": Icons.movie,
+      "color": Colors.pinkAccent,
+      "route": "Flim",
+    },
+    {
+      "name": "polloariod",
+      "icon": Icons.filter_frames_outlined,
+      "color": Colors.limeAccent,
+      "route": "polloariod",
+    },
+    {
+      "name": "slit scan",
+      "icon": Icons.view_column_rounded,
+      "color": Colors.brown,
+      "route": "scan",
+    },
   ];
 
   @override
@@ -128,76 +135,74 @@ class CollageListScreen extends StatelessWidget {
                       builder: (context) => const CenterHeartCollageScreen(),
                     ),
                   );
-                } 
-                else if (layout['route'] == 'grid') {
+                } else if (layout['route'] == 'grid') {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const DynamicGridCollageScreen(),
                     ),
                   );
-                }
-                else if (layout['route'] == 'mickey') {
+                } else if (layout['route'] == 'mickey') {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const MickeyFinalDesign(),
                     ),
                   );
-                }
-                 else if (layout['route'] == 'curved') {
+                } else if (layout['route'] == 'curved') {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const BubbleCollageScreen(),
                     ),
                   );
-                }
-                else if (layout['route'] == 'flower') {
+                } else if (layout['route'] == 'flower') {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const FlowerCollageScreen(),
                     ),
                   );
-                }
-                else if (layout['route'] == 'pentagon') {
+                } else if (layout['route'] == 'pentagon') {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const PuzzleCollageScreen(),
                     ),
                   );
-                }
-                else if (layout['route'] == 'diamond') {
+                } else if (layout['route'] == 'diamond') {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const ProCameraLensCollage(),
                     ),
                   );
-                }
-                else if (layout['route'] == 'moodboard') {
+                } else if (layout['route'] == 'moodboard') {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const MoodboardMuseCollage(),
                     ),
                   );
-                }
-                else if (layout['route'] == 'Flim') {
+                } else if (layout['route'] == 'Flim') {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const AuraCollageScreen(),
                     ),
                   );
-                }
-                 else if (layout['route'] == 'polloariod') {
+                } else if (layout['route'] == 'polloariod') {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const HangingBulbCollage(),
+                    ),
+                  );
+                } else if (layout['route'] == 'scan') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SlitScanCollage(),
                     ),
                   );
                 }

@@ -1,9 +1,9 @@
 import 'dart:io';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:photho_editor/collagecontrol.dart';
 import 'package:photho_editor/collageimagehelper.dart';
-// import 'collage_helper.dart'; // Ensure your helper file exists
+import 'package:photho_editor/sharedstyle.dart';
 
 class HangingBulbCollage extends StatefulWidget {
   const HangingBulbCollage({super.key});
@@ -17,25 +17,17 @@ class _HangingBulbCollageState extends State<HangingBulbCollage> {
   List<File?> images = List.filled(5, null);
   final GlobalKey _saveKey = GlobalKey();
 
-  // Customization State
-  Color frameColor = Colors.white;
-  double borderWidth = 5.0;
+  // 1. Unified Style Initialization
+  late CollageStyle myStyle;
 
-  final List<Color> palette = [
-    Colors.white,
-    const Color(0xFFF4EBD0), // Cream
-    const Color(0xFFD6D2C4), // Grey
-    const Color(0xFFA28972), // Kraft
-    const Color(0xFFE5D1D0), // Rose
-    const Color(0xFF1A1A1A), // Matte Black
-  ];
-
-  void resetCollage() {
-    setState(() {
-      images = List.filled(5, null);
-      frameColor = Colors.white;
-      borderWidth = 5.0;
-    });
+  @override
+  void initState() {
+    super.initState();
+    myStyle = CollageStyle(
+      borderColor: const Color(0xFFF4EBD0), // Vintage Cream default
+      borderWidth: 6.0,
+      activeBackground: appBackgrounds[0],
+    );
   }
 
   Future<void> pickImage(int index) async {
@@ -43,29 +35,35 @@ class _HangingBulbCollageState extends State<HangingBulbCollage> {
     if (picked != null) setState(() => images[index] = File(picked.path));
   }
 
+  void resetCollage() {
+    setState(() {
+      images = List.filled(5, null);
+      myStyle.borderColor = const Color(0xFFF4EBD0);
+      myStyle.borderWidth = 6.0;
+      myStyle.activeBackground = appBackgrounds[0];
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final Size size = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF080808),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: Colors.pinkAccent,
-        tooltip: 'Save Collage',
-        onPressed: () => CollageHelper.saveCollage(_saveKey, context),
-        label: const Text("Save"),
-        icon: const Icon(Icons.download_rounded),
-      ),
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text("BOUTIQUE CUSTOM", style: TextStyle(fontSize: 10, letterSpacing: 5, color: Colors.amber)),
+        title: const Text(
+          "BOUTIQUE CUSTOM",
+          style: TextStyle(fontSize: 10, letterSpacing: 5, color: Colors.amberAccent),
+        ),
+        centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: const BackButton(color: Colors.white),
         actions: [
-          // IconButton(
-          //   icon: const Icon(Icons.download_for_offline_rounded, color: Colors.amber),
-          //   onPressed: () => CollageHelper.saveCollage(_saveKey, context),
-          // )
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: Colors.white70),
+            onPressed: resetCollage,
+          ),
         ],
       ),
       body: Column(
@@ -74,14 +72,17 @@ class _HangingBulbCollageState extends State<HangingBulbCollage> {
             child: RepaintBoundary(
               key: _saveKey,
               child: Container(
-                color: const Color(0xFF080808),
+                // 2. Applying Shared Background (The "Wall")
+                decoration: myStyle.activeBackground.decoration,
                 child: Stack(
                   children: [
-                    // This calls the Painter class defined below
+                    // Lighting and String Painter
                     CustomPaint(
-                      size: Size(size.width, size.height), 
-                      painter: BulbStringPainter(),
+                      size: Size(size.width, size.height),
+                      painter: BulbStringPainter(accentColor: myStyle.borderColor),
                     ),
+                    
+                    // The Hanging Photos
                     _hangingPhoto(0, top: 100, left: size.width * 0.04, angle: -0.06),
                     _hangingPhoto(1, top: 125, left: size.width * 0.36, angle: 0.04),
                     _hangingPhoto(2, top: 100, left: size.width * 0.68, angle: -0.04),
@@ -92,43 +93,30 @@ class _HangingBulbCollageState extends State<HangingBulbCollage> {
               ),
             ),
           ),
-          
-          // CONTROL PANEL
-          Container(
-            padding: const EdgeInsets.all(20),
-            color: const Color(0xFF151515),
-            child: Column(
-              children: [
-                Slider(
-                  value: borderWidth,
-                  min: 2.0,
-                  max: 15.0,
-                  activeColor: Colors.amber,
-                  onChanged: (val) => setState(() => borderWidth = val),
+
+          // 3. Shared Control Panel
+          CollageControlPanel(
+            style: myStyle,
+            onColorChanged: (newColor) => setState(() => myStyle.borderColor = newColor),
+            onWidthChanged: (newWidth) => setState(() => myStyle.borderWidth = newWidth),
+            onBackgroundChanged: (newBg) => setState(() => myStyle.activeBackground = newBg),
+          ),
+
+          // Save Button
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.pinkAccent,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                SizedBox(
-                  height: 40,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: palette.length,
-                    itemBuilder: (context, i) => GestureDetector(
-                      onTap: () => setState(() => frameColor = palette[i]),
-                      child: Container(
-                        width: 40,
-                        margin: const EdgeInsets.only(right: 12),
-                        decoration: BoxDecoration(
-                          color: palette[i],
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: frameColor == palette[i] ? Colors.amber : Colors.white12,
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+                onPressed: () => CollageHelper.saveCollage(_saveKey, context),
+                icon: const Icon(Icons.download_rounded, color: Colors.white),
+                label: const Text("EXPORT BOUTIQUE", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
             ),
           ),
         ],
@@ -138,27 +126,53 @@ class _HangingBulbCollageState extends State<HangingBulbCollage> {
 
   Widget _hangingPhoto(int index, {required double top, required double left, double angle = 0}) {
     return Positioned(
-      top: top, left: left,
+      top: top,
+      left: left,
       child: Transform.rotate(
         angle: angle,
         child: Column(
           children: [
-            Container(width: 8, height: 18, decoration: BoxDecoration(color: Colors.brown[400], borderRadius: BorderRadius.circular(2))),
+            // The Wooden Clip
+            Container(
+              width: 8,
+              height: 18,
+              decoration: BoxDecoration(
+                color: const Color(0xFF795548),
+                borderRadius: BorderRadius.circular(2),
+                boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 2)],
+              ),
+            ),
+            // The Polaroid Frame
             Container(
               width: 115,
-              padding: EdgeInsets.fromLTRB(borderWidth, borderWidth, borderWidth, 30),
+              padding: EdgeInsets.fromLTRB(
+                myStyle.borderWidth,
+                myStyle.borderWidth,
+                myStyle.borderWidth,
+                myStyle.borderWidth * 4.5, // Dynamic bottom margin for Polaroid effect
+              ),
               decoration: BoxDecoration(
-                color: frameColor,
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 10, offset: const Offset(4, 4))],
+                color: myStyle.borderColor,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.5),
+                    blurRadius: 15,
+                    offset: const Offset(6, 6),
+                  ),
+                ],
               ),
               child: AspectRatio(
                 aspectRatio: 1,
                 child: Container(
-                  color: const Color(0xFFEFEFEF),
+                  color: const Color(0xFF0A0A0A),
                   child: images[index] == null
                       ? InkWell(
                           onTap: () => pickImage(index),
-                          child: Icon(Icons.filter_frames_outlined, color: Colors.amber.withOpacity(0.3), size: 30),
+                          child: Icon(
+                            Icons.add_photo_alternate_outlined,
+                            color: Colors.amber.withOpacity(0.2),
+                            size: 30,
+                          ),
                         )
                       : InteractiveViewer(
                           clipBehavior: Clip.hardEdge,
@@ -174,24 +188,24 @@ class _HangingBulbCollageState extends State<HangingBulbCollage> {
   }
 }
 
-// --- THE MISSING PAINTER CLASS ---
 class BulbStringPainter extends CustomPainter {
+  final Color accentColor;
+  BulbStringPainter({required this.accentColor});
+
   @override
   void paint(Canvas canvas, Size size) {
     final stringPaint = Paint()
-      ..color = Colors.white10
+      ..color = Colors.white.withOpacity(0.08)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
+      ..strokeWidth = 1.2;
 
     final bulbGlow = Paint()
-      ..color = Colors.amber.withOpacity(0.2)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
+      ..color = Colors.amber.withOpacity(0.15)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
 
-    final bulbCore = Paint()..color = Colors.amberAccent;
+    final bulbCore = Paint()..color = Colors.amberAccent.withOpacity(0.8);
 
-    // Draw Row 1 Strings and Bulbs
     _drawRow(canvas, size, 90, 150, [0.34, 0.66], bulbGlow, bulbCore, stringPaint);
-    // Draw Row 2 Strings and Bulbs
     _drawRow(canvas, size, 390, 450, [0.48], bulbGlow, bulbCore, stringPaint);
   }
 
@@ -204,12 +218,13 @@ class BulbStringPainter extends CustomPainter {
     for (double t in bulbPositions) {
       double x = size.width * t;
       double y = (1 - t) * (1 - t) * startY + 2 * (1 - t) * t * ctrlY + t * t * startY;
-      canvas.drawLine(Offset(x, y), Offset(x, y + 20), Paint()..color = Colors.white24);
-      canvas.drawCircle(Offset(x, y + 28), 10, glow);
-      canvas.drawCircle(Offset(x, y + 28), 3, core);
+
+      canvas.drawLine(Offset(x, y), Offset(x, y + 20), Paint()..color = Colors.white10);
+      canvas.drawCircle(Offset(x, y + 28), 14, glow);
+      canvas.drawCircle(Offset(x, y + 28), 3.5, core);
     }
   }
 
   @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

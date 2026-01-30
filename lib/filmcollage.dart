@@ -1,8 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:photho_editor/collagecontrol.dart';
 import 'package:photho_editor/collageimagehelper.dart';
-// import 'collage_helper.dart'; // Ensure your helper is in your project
+import 'package:photho_editor/sharedstyle.dart';
 
 class AuraCollageScreen extends StatefulWidget {
   const AuraCollageScreen({super.key});
@@ -14,71 +15,110 @@ class AuraCollageScreen extends StatefulWidget {
 class _AuraCollageScreenState extends State<AuraCollageScreen> {
   final ImagePicker picker = ImagePicker();
   List<File?> images = List.filled(5, null);
-  
-  // 1. Define the GlobalKey for capturing
   final GlobalKey _auraKey = GlobalKey();
+
+  // 1. Unified Style Initialization
+  late CollageStyle myStyle;
+
+  @override
+  void initState() {
+    super.initState();
+    myStyle = CollageStyle(
+      borderColor: Colors.orangeAccent, // Kodak Classic Default
+      borderWidth: 1.0,
+      activeBackground: appBackgrounds[0],
+    );
+  }
 
   Future<void> pickImage(int index) async {
     final picked = await picker.pickImage(source: ImageSource.gallery);
-    if (picked != null) {
-      setState(() => images[index] = File(picked.path));
-    }
+    if (picked != null) setState(() => images[index] = File(picked.path));
+  }
+
+  void resetCollage() {
+    setState(() {
+      images = List.filled(5, null);
+      myStyle.borderColor = Colors.orangeAccent;
+      myStyle.borderWidth = 1.0;
+      myStyle.activeBackground = appBackgrounds[0];
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF050505),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: Colors.pinkAccent,
-        tooltip: 'Save Collage',  
-        onPressed: () => CollageHelper.saveCollage(_auraKey, context),
-        label: const Text("Save"),
-        icon: const Icon(Icons.download_rounded),
-      ),
+      backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        title: Text(
+          "AURA FILM STRIP",
+          style: TextStyle(
+            fontSize: 10, 
+            letterSpacing: 4, 
+            color: myStyle.borderColor.withOpacity(0.7)
+          ),
+        ),
+        centerTitle: true,
         leading: const BackButton(color: Colors.white),
         actions: [
-          // 2. Save Button
-          // IconButton(
-          //   icon: const Icon(Icons.save_alt_rounded, color: Colors.orangeAccent),
-          //   onPressed: () => CollageHelper.saveCollage(_auraKey, context),
-          // ),
-          // const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: Colors.white70),
+            onPressed: resetCollage,
+          ),
         ],
       ),
-      body: SafeArea(
-        // 3. Wrap the content in RepaintBoundary for full-length capture
-        child: SingleChildScrollView(
-          child: RepaintBoundary(
-            key: _auraKey,
-            child: Container(
-              color: const Color(0xFF050505), // Background for the export
-              child: Column(
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 20),
-                    child: Text(
-                      "NEGATIVE // ISO 400",
-                      style: TextStyle(
-                        color: Colors.orangeAccent,
-                        letterSpacing: 4,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: RepaintBoundary(
+                key: _auraKey,
+                child: Container(
+                  // 2. Dynamic Background from Shared Style
+                  decoration: myStyle.activeBackground.decoration,
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: Column(
+                    children: [
+                      Text(
+                        "NEGATIVE // ISO 400",
+                        style: TextStyle(
+                          color: myStyle.borderColor,
+                          letterSpacing: 8,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 20),
+                      ...List.generate(5, (index) => _buildFilmFrame(index)),
+                      const SizedBox(height: 40),
+                    ],
                   ),
-                  // Build all 5 frames in a Column instead of ListView 
-                  // to ensure the RepaintBoundary captures everything.
-                  ...List.generate(5, (index) => _buildFilmFrame(index)),
-                  const SizedBox(height: 20),
-                ],
+                ),
               ),
             ),
           ),
-        ),
+
+          // 3. Control Panel Integration
+          CollageControlPanel(
+            style: myStyle,
+            onColorChanged: (newColor) => setState(() => myStyle.borderColor = newColor),
+            onWidthChanged: (newWidth) => setState(() => myStyle.borderWidth = newWidth),
+            onBackgroundChanged: (newBg) => setState(() => myStyle.activeBackground = newBg),
+          ),
+          
+          // Save Button
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: FloatingActionButton.extended(
+              backgroundColor: Colors.pinkAccent,
+              onPressed: () => CollageHelper.saveCollage(_auraKey, context),
+              label: const Text("SAVE ROLL", style: TextStyle(color: Colors.white)),
+              icon: const Icon(Icons.camera_roll, color: Colors.white),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -86,30 +126,30 @@ class _AuraCollageScreenState extends State<AuraCollageScreen> {
   Widget _buildFilmFrame(int index) {
     return Container(
       height: 220,
-      margin: const EdgeInsets.only(bottom: 15, left: 20, right: 20),
+      margin: const EdgeInsets.only(bottom: 15, left: 10, right: 10),
       child: Stack(
         children: [
-          // 1. THE IMAGE LAYER
+          // The Image Container
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 40),
+            padding: const EdgeInsets.symmetric(horizontal: 45),
             child: Container(
-              color: const Color(0xFF1A1A1A),
+              decoration: BoxDecoration(
+                color: Colors.black,
+                border: Border.all(color: myStyle.borderColor.withOpacity(0.2), width: 0.5),
+              ),
               child: images[index] == null
                   ? GestureDetector(
                       onTap: () => pickImage(index),
-                      child: const Center(
+                      child: Center(
                         child: Icon(
                           Icons.add_a_photo_outlined,
-                          color: Colors.white10,
-                          size: 40,
+                          color: myStyle.borderColor.withOpacity(0.2),
+                          size: 32,
                         ),
                       ),
                     )
                   : InteractiveViewer(
                       clipBehavior: Clip.hardEdge,
-                      boundaryMargin: const EdgeInsets.all(double.infinity),
-                      minScale: 0.1,
-                      maxScale: 5.0,
                       child: GestureDetector(
                         onDoubleTap: () => pickImage(index),
                         child: Image.file(
@@ -123,21 +163,29 @@ class _AuraCollageScreenState extends State<AuraCollageScreen> {
             ),
           ),
 
-          // 2. THE FILM STRIP BORDER
+          // 4. Custom Painter for Film Details
           IgnorePointer(
             child: CustomPaint(
               size: Size.infinite,
-              painter: FilmStripPainter(),
+              painter: FilmStripPainter(
+                accentColor: myStyle.borderColor,
+                strokeWidth: myStyle.borderWidth,
+              ),
             ),
           ),
 
-          // 3. FRAME NUMBERING
+          // Frame Numbering
           Positioned(
-            left: 10,
-            bottom: 10,
+            left: 20,
+            bottom: 12,
             child: Text(
               "0${index + 1}A",
-              style: const TextStyle(color: Colors.orangeAccent, fontSize: 8),
+              style: TextStyle(
+                color: myStyle.borderColor.withOpacity(0.8), 
+                fontSize: 8,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'monospace'
+              ),
             ),
           ),
         ],
@@ -146,21 +194,26 @@ class _AuraCollageScreenState extends State<AuraCollageScreen> {
   }
 }
 
-// --- FILM STRIP PAINTER (Same as your original) ---
 class FilmStripPainter extends CustomPainter {
+  final Color accentColor;
+  final double strokeWidth;
+  FilmStripPainter({required this.accentColor, required this.strokeWidth});
+
   @override
   void paint(Canvas canvas, Size size) {
-    final Paint holePaint = Paint()..color = Colors.black;
+    final Paint holePaint = Paint()..color = Colors.black.withOpacity(0.8);
     final Paint borderPaint = Paint()
-      ..color = Colors.white.withOpacity(0.05)
+      ..color = accentColor.withOpacity(0.3)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
+      ..strokeWidth = strokeWidth;
 
-    double holeWidth = 12;
-    double holeHeight = 8;
-    double padding = 15;
+    double holeWidth = 10;
+    double holeHeight = 14;
+    double padding = 20;
 
-    for (double i = 10; i < size.height; i += 25) {
+    // Draw Sprocket Holes (Top and Bottom of the strip)
+    for (double i = 10; i < size.height; i += 28) {
+      // Left Holes
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromLTWH(padding, i, holeWidth, holeHeight),
@@ -168,6 +221,7 @@ class FilmStripPainter extends CustomPainter {
         ),
         holePaint,
       );
+      // Right Holes
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromLTWH(size.width - padding - holeWidth, i, holeWidth, holeHeight),
@@ -177,11 +231,15 @@ class FilmStripPainter extends CustomPainter {
       );
     }
 
+    // Inner frame border (Around the image area)
     canvas.drawRect(
-      Rect.fromLTWH(40, 0, size.width - 80, size.height),
+      Rect.fromLTWH(45, 0, size.width - 90, size.height),
       borderPaint,
     );
   }
+
   @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
+  bool shouldRepaint(FilmStripPainter oldDelegate) =>
+      oldDelegate.accentColor != accentColor ||
+      oldDelegate.strokeWidth != strokeWidth;
 }
