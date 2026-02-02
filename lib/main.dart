@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:photho_editor/circlecollage.dart';
 import 'package:photho_editor/collage.dart';
+import 'package:photho_editor/freestylecollage.dart';
 import 'package:photho_editor/gridcollage.dart';
 import 'package:photho_editor/heartflower.dart';
 import 'package:photho_editor/homescreen.dart';
@@ -18,7 +19,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: HomeScreen(),
+      home: FreestyleCustomScreen(),
     );
   }
 }

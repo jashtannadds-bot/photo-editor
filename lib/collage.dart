@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:photho_editor/circlecollage.dart';
 import 'package:photho_editor/diamondcollage.dart';
 import 'package:photho_editor/flowercollage.dart';
+import 'package:photho_editor/freestylecollage.dart';
 import 'package:photho_editor/gridcollage.dart';
 import 'package:photho_editor/heartcollage.dart';
 import 'package:photho_editor/mickycollage.dart';
@@ -91,6 +92,12 @@ class CollageListScreen extends StatelessWidget {
       "icon": Icons.view_column_rounded,
       "color": Colors.brown,
       "route": "scan",
+    },
+    {
+      "name": "FreeStyle",
+      "icon": Icons.view_column_rounded,
+      "color": Colors.brown,
+      "route": "Free",
     },
   ];
 
@@ -203,6 +210,13 @@ class CollageListScreen extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (context) => const SlitScanCollage(),
+                    ),
+                  );
+                } else if (layout['route'] == 'free') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const FreestyleCustomScreen(),
                     ),
                   );
                 }
