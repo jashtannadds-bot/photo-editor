@@ -99,6 +99,7 @@ class CollageListScreen extends StatelessWidget {
       "color": Colors.brown,
       "route": "Free",
     },
+    
   ];
 
   @override
@@ -108,7 +109,7 @@ class CollageListScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text(
           "Select Layout",
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold,color: Colors.white),
         ),
         backgroundColor: Colors.black,
         elevation: 0,
@@ -212,7 +213,7 @@ class CollageListScreen extends StatelessWidget {
                       builder: (context) => const SlitScanCollage(),
                     ),
                   );
-                } else if (layout['route'] == 'free') {
+                } else if (layout['route'] == 'ree') {
                   Navigator.push(
                     context,
                     MaterialPageRoute(

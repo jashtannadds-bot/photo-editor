@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:photho_editor/sharedstyle.dart'; // Ensure BackgroundStyle is defined here
+import 'package:photho_editor/sharedstyle.dart'; 
 
 class CollageControlPanel extends StatelessWidget {
   final CollageStyle style;
   final Function(Color) onColorChanged;
   final Function(double) onWidthChanged;
-  // NEW: Callback for background changes
   final Function(BackgroundStyle) onBackgroundChanged;
 
   const CollageControlPanel({
@@ -28,33 +27,41 @@ class CollageControlPanel extends StatelessWidget {
     ];
 
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: Colors.black87,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+      // We keep the decoration minimal as it's usually inside a DraggableSheet
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            "Border Width",
-            style: TextStyle(color: Colors.white54, fontSize: 10),
+          // 1. DRAG HANDLE (For the DraggableSheet feel)
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 20),
+              height: 4,
+              width: 40,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
           ),
+
+          // 2. BORDER WIDTH SECTION
+          _buildSectionHeader("BORDER WIDTH"),
           Slider(
             value: style.borderWidth,
             min: 0,
             max: 20,
             onChanged: onWidthChanged,
             activeColor: Colors.amber,
+            inactiveColor: Colors.white12,
           ),
 
-          const Text(
-            "Border Color",
-            style: TextStyle(color: Colors.white54, fontSize: 10),
-          ),
-          const SizedBox(height: 8),
-          // Horizontal list for Color Palette
+          const SizedBox(height: 10),
+
+          // 3. BORDER COLOR SECTION
+          _buildSectionHeader("BORDER COLOR"),
+          const SizedBox(height: 12),
           SizedBox(
             height: 40,
             child: ListView.builder(
@@ -64,7 +71,7 @@ class CollageControlPanel extends StatelessWidget {
                 onTap: () => onColorChanged(colors[index]),
                 child: Container(
                   width: 40,
-                  margin: const EdgeInsets.only(right: 12),
+                  margin: const EdgeInsets.only(right: 15),
                   decoration: BoxDecoration(
                     color: colors[index],
                     shape: BoxShape.circle,
@@ -72,7 +79,7 @@ class CollageControlPanel extends StatelessWidget {
                       color: style.borderColor == colors[index]
                           ? Colors.amber
                           : Colors.white24,
-                      width: 2,
+                      width: 2.5,
                     ),
                   ),
                 ),
@@ -80,35 +87,30 @@ class CollageControlPanel extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 16),
-          const Text(
-            "Background Gradient",
-            style: TextStyle(color: Colors.white54, fontSize: 10),
-          ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 25),
 
-          // NEW: Horizontal list for Background Gradients
+          // 4. BACKGROUND GRADIENT SECTION
+          _buildSectionHeader("BACKGROUND GRADIENT"),
+          const SizedBox(height: 12),
           SizedBox(
-            height: 50,
+            height: 55,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              itemCount: appBackgrounds
-                  .length, // appBackgrounds list defined in sharedstyle
+              itemCount: appBackgrounds.length,
               itemBuilder: (context, index) {
                 final bg = appBackgrounds[index];
                 return GestureDetector(
                   onTap: () => onBackgroundChanged(bg),
                   child: Container(
-                    width: 50,
-                    margin: const EdgeInsets.only(right: 12),
+                    width: 55,
+                    margin: const EdgeInsets.only(right: 15),
                     decoration: bg.decoration.copyWith(
-                      // This now uses the 2-color LinearGradient
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: style.activeBackground?.name == bg.name
+                        color: style.activeBackground.name == bg.name
                             ? Colors.amber
                             : Colors.white24,
-                        width: 2,
+                        width: 2.5,
                       ),
                     ),
                   ),
@@ -116,7 +118,21 @@ class CollageControlPanel extends StatelessWidget {
               },
             ),
           ),
+          const SizedBox(height: 20), // Bottom padding
         ],
+      ),
+    );
+  }
+
+  // Helper to keep the titles consistent and clean
+  Widget _buildSectionHeader(String title) {
+    return Text(
+      title,
+      style: const TextStyle(
+        color: Colors.white38,
+        fontSize: 10,
+        fontWeight: FontWeight.bold,
+        letterSpacing: 1.2,
       ),
     );
   }
