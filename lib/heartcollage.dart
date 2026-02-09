@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:photho_editor/collagecontrol.dart'; 
+import 'package:photho_editor/collagecontrol.dart';
 import 'package:photho_editor/collageimagehelper.dart';
 import 'package:photho_editor/commontext.dart';
 import 'package:photho_editor/sharedstyle.dart';
@@ -10,20 +10,20 @@ class CenterHeartCollageScreen extends StatefulWidget {
   const CenterHeartCollageScreen({super.key});
 
   @override
-  State<CenterHeartCollageScreen> createState() => _CenterHeartCollageScreenState();
+  State<CenterHeartCollageScreen> createState() =>
+      _CenterHeartCollageScreenState();
 }
 
 class _CenterHeartCollageScreenState extends State<CenterHeartCollageScreen> {
   final ImagePicker picker = ImagePicker();
   final GlobalKey _boundaryKey = GlobalKey();
-  
+
   List<File?> gridImages = List.filled(4, null);
   File? heartImage;
-  
-  // Storage for text items added to the collage
-  List<Widget> textWidgets = [];
 
+  List<TextProperties> textItems = [];
   late CollageStyle myStyle;
+  bool isDraggingText = false;
 
   @override
   void initState() {
@@ -48,26 +48,23 @@ class _CenterHeartCollageScreenState extends State<CenterHeartCollageScreen> {
     }
   }
 
-  void resetCollage() {
-    setState(() {
-      gridImages = List.filled(4, null);
-      heartImage = null;
-      textWidgets.clear(); 
-      myStyle.borderColor = Colors.white;
-      myStyle.borderWidth = 2.0;
-      myStyle.activeBackground = appBackgrounds[0];
-    });
-  }
-
-  void _addNewText() {
-    // Calling the common text handler we discussed
+  void _handleTextAction({TextProperties? existing, int? index}) {
     CollageTextHandler.showTextEditor(
       context: context,
+      initialText: existing?.text,
+      initialColor: existing?.color,
+      initialFont: existing?.font,
       onComplete: (text, color, font) {
         setState(() {
-          textWidgets.add(
-             DraggableTextWidget(text: text, color: color, font: font),
-          );
+          if (index != null) {
+            textItems[index] = textItems[index].copyWith(
+              text: text,
+              color: color,
+              font: font,
+            );
+          } else {
+            textItems.add(TextProperties(text: text, color: color, font: font));
+          }
         });
       },
     );
@@ -80,15 +77,33 @@ class _CenterHeartCollageScreenState extends State<CenterHeartCollageScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text("EDITORIAL HEART", 
-          style: TextStyle(fontSize: 10, letterSpacing: 4, color: Colors.white70)),
+        title: const Text(
+          "EDITORIAL HEART",
+          style: TextStyle(
+            fontSize: 10,
+            letterSpacing: 4,
+            color: Colors.white70,
+          ),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         leading: const BackButton(color: Colors.white),
         actions: [
-          IconButton(icon: const Icon(Icons.text_fields), onPressed: _addNewText),
-          IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: resetCollage)
+          IconButton(
+            icon: const Icon(Icons.text_fields, color: Colors.white),
+            onPressed: () => _handleTextAction(),
+          ),
+          TextButton(
+            onPressed: () => CollageHelper.saveCollage(_boundaryKey, context),
+            child: const Text(
+              "SAVE",
+              style: TextStyle(
+                color: Colors.pinkAccent,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
         ],
       ),
       body: Stack(
@@ -132,7 +147,7 @@ class _CenterHeartCollageScreenState extends State<CenterHeartCollageScreen> {
                               ],
                             ),
 
-                            /// The Center Heart
+                            /// THE HEART
                             SizedBox(
                               width: heartSize,
                               height: heartSize,
@@ -140,20 +155,38 @@ class _CenterHeartCollageScreenState extends State<CenterHeartCollageScreen> {
                                 children: [
                                   ClipPath(
                                     clipper: PerfectHeartClipper(),
-                                    child: Container(
-                                      decoration: BoxDecoration(color: Colors.black.withOpacity(0.3)),
-                                      child: heartImage == null
-                                          ? GestureDetector(
-                                              onTap: () => pickImage(0, true),
-                                              child: Center(
-                                                child: Icon(Icons.favorite, 
-                                                  color: myStyle.borderColor.withOpacity(0.5), size: 40),
+                                    child: GestureDetector(
+                                      onTap: heartImage == null
+                                          ? () => pickImage(0, true)
+                                          : null,
+                                      onDoubleTap: () => pickImage(0, true),
+                                      child: Container(
+                                        width: heartSize,
+                                        height: heartSize,
+                                        color: Colors.black.withOpacity(0.3),
+                                        child: heartImage == null
+                                            ? Center(
+                                                child: Icon(
+                                                  Icons.favorite,
+                                                  color: myStyle.borderColor
+                                                      .withOpacity(0.5),
+                                                  size: 40,
+                                                ),
+                                              )
+                                            : InteractiveViewer(
+                                                boundaryMargin: EdgeInsets.all(
+                                                  heartSize * 0.5,
+                                                ),
+                                                minScale: 1.0,
+                                                maxScale: 5.0,
+                                                child: Image.file(
+                                                  heartImage!,
+                                                  fit: BoxFit.cover,
+                                                  width: heartSize,
+                                                  height: heartSize,
+                                                ),
                                               ),
-                                            )
-                                          : InteractiveViewer(
-                                              clipBehavior: Clip.hardEdge,
-                                              child: Image.file(heartImage!, fit: BoxFit.cover),
-                                            ),
+                                      ),
                                     ),
                                   ),
                                   IgnorePointer(
@@ -168,9 +201,20 @@ class _CenterHeartCollageScreenState extends State<CenterHeartCollageScreen> {
                                 ],
                               ),
                             ),
-                            
+
                             // Floating Text Layer
-                            ...textWidgets,
+                            for (int i = 0; i < textItems.length; i++)
+                              DraggableTextWidget(
+                                properties: textItems[i],
+                                onTap: () => _handleTextAction(
+                                  existing: textItems[i],
+                                  index: i,
+                                ),
+                                onDragStatusChanged: (dragging) =>
+                                    setState(() => isDraggingText = dragging),
+                                onDelete: () =>
+                                    setState(() => textItems.removeAt(i)),
+                              ),
                           ],
                         ),
                       ),
@@ -178,24 +222,35 @@ class _CenterHeartCollageScreenState extends State<CenterHeartCollageScreen> {
                   ),
                 ),
               ),
-              
-              // Save Button (Adjusted for DraggableSheet)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 110),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.pinkAccent),
-                    onPressed: () => CollageHelper.saveCollage(_boundaryKey, context),
-                    icon: const Icon(Icons.download_rounded, color: Colors.white),
-                    label: const Text("SAVE COLLAGE", style: TextStyle(color: Colors.white)),
-                  ),
-                ),
-              ),
+              const SizedBox(height: 100),
             ],
           ),
 
-          /// DRAGGABLE CONTROL PANEL
+          /// THE DUSTBIN
+          if (isDraggingText)
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Container(
+                margin: const EdgeInsets.all(130),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withOpacity(0.9),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.red.withOpacity(0.4),
+                      blurRadius: 20,
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.delete_outline,
+                  color: Colors.white,
+                  size: 32,
+                ),
+              ),
+            ),
+
           DraggableScrollableSheet(
             initialChildSize: 0.12,
             minChildSize: 0.12,
@@ -204,15 +259,20 @@ class _CenterHeartCollageScreenState extends State<CenterHeartCollageScreen> {
               return Container(
                 decoration: BoxDecoration(
                   color: Colors.black.withOpacity(0.95),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(30),
+                  ),
                 ),
                 child: SingleChildScrollView(
                   controller: scrollController,
                   child: CollageControlPanel(
                     style: myStyle,
-                    onColorChanged: (newColor) => setState(() => myStyle.borderColor = newColor),
-                    onWidthChanged: (newWidth) => setState(() => myStyle.borderWidth = newWidth),
-                    onBackgroundChanged: (newBg) => setState(() => myStyle.activeBackground = newBg),
+                    onColorChanged: (newColor) =>
+                        setState(() => myStyle.borderColor = newColor),
+                    onWidthChanged: (newWidth) =>
+                        setState(() => myStyle.borderWidth = newWidth),
+                    onBackgroundChanged: (newBg) =>
+                        setState(() => myStyle.activeBackground = newBg),
                   ),
                 ),
               );
@@ -226,20 +286,34 @@ class _CenterHeartCollageScreenState extends State<CenterHeartCollageScreen> {
   Widget _buildInteractiveTile(int index) {
     return Expanded(
       child: GestureDetector(
-        onTap: () => pickImage(index, false),
+        onTap: gridImages[index] == null ? () => pickImage(index, false) : null,
+        onDoubleTap: () => pickImage(index, false),
         child: Container(
           decoration: BoxDecoration(
             color: const Color(0xFF151515).withOpacity(0.5),
-            border: Border.all(color: myStyle.borderColor, width: myStyle.borderWidth / 2),
+            border: Border.all(
+              color: myStyle.borderColor,
+              width: myStyle.borderWidth / 2,
+            ),
           ),
           child: gridImages[index] == null
               ? Center(
-                  child: Icon(Icons.add_a_photo_outlined, 
-                    color: myStyle.borderColor.withOpacity(0.3), size: 24),
+                  child: Icon(
+                    Icons.add_a_photo_outlined,
+                    color: myStyle.borderColor.withOpacity(0.3),
+                    size: 24,
+                  ),
                 )
               : InteractiveViewer(
-                  clipBehavior: Clip.hardEdge,
-                  child: Image.file(gridImages[index]!, fit: BoxFit.cover),
+                  boundaryMargin: const EdgeInsets.all(100),
+                  minScale: 1.0,
+                  maxScale: 4.0,
+                  child: Image.file(
+                    gridImages[index]!,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
+                  ),
                 ),
         ),
       ),
@@ -247,7 +321,104 @@ class _CenterHeartCollageScreenState extends State<CenterHeartCollageScreen> {
   }
 }
 
-// --- HELPER CLASSES (Place these outside the State class) ---
+// --- DATA CLASS ---
+class TextProperties {
+  final String text;
+  final Color color;
+  final String font;
+  TextProperties({required this.text, required this.color, required this.font});
+
+  TextProperties copyWith({String? text, Color? color, String? font}) {
+    return TextProperties(
+      text: text ?? this.text,
+      color: color ?? this.color,
+      font: font ?? this.font,
+    );
+  }
+}
+
+// --- DRAGGABLE TEXT WIDGET ---
+class DraggableTextWidget extends StatefulWidget {
+  final TextProperties properties;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
+  final Function(bool) onDragStatusChanged;
+
+  const DraggableTextWidget({
+    super.key,
+    required this.properties,
+    required this.onTap,
+    required this.onDelete,
+    required this.onDragStatusChanged,
+  });
+
+  @override
+  State<DraggableTextWidget> createState() => _DraggableTextWidgetState();
+}
+
+class _DraggableTextWidgetState extends State<DraggableTextWidget> {
+  Offset position = const Offset(150, 200);
+  double scale = 1.0;
+  double rotation = 0.0;
+  double baseScale = 1.0;
+  double baseRotation = 0.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      left: position.dx,
+      top: position.dy,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        onScaleStart: (details) {
+          baseScale = scale;
+          baseRotation = rotation;
+          widget.onDragStatusChanged(true);
+        },
+        onScaleUpdate: (details) {
+          setState(() {
+            position += details.focalPointDelta;
+            scale = (baseScale * details.scale).clamp(0.5, 5.0);
+            rotation = baseRotation + details.rotation;
+          });
+        },
+        onScaleEnd: (details) {
+          widget.onDragStatusChanged(false);
+          final screenHeight = MediaQuery.of(context).size.height;
+          final screenWidth = MediaQuery.of(context).size.width;
+
+          if (position.dy > screenHeight * 0.6 &&
+              position.dx > screenWidth * 0.2 &&
+              position.dx < screenWidth * 0.8) {
+            widget.onDelete();
+          }
+        },
+        child: Transform(
+          alignment: Alignment.center,
+          transform: Matrix4.identity()
+            ..rotateZ(rotation)
+            ..scale(scale),
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            child: Text(
+              widget.properties.text,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: widget.properties.color,
+                fontFamily: widget.properties.font,
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                shadows: const [Shadow(blurRadius: 10, color: Colors.black54)],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// --- MISSING CLASSES RESTORED BELOW ---
 
 class PerfectHeartClipper extends CustomClipper<Path> {
   @override
@@ -261,6 +432,7 @@ class PerfectHeartClipper extends CustomClipper<Path> {
     path.close();
     return path;
   }
+
   @override
   bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
@@ -287,41 +459,7 @@ class PerfectHeartPainter extends CustomPainter {
     path.close();
     canvas.drawPath(path, paint);
   }
+
   @override
   bool shouldRepaint(PerfectHeartPainter oldDelegate) => true;
-}
-
-class DraggableTextWidget extends StatefulWidget {
-  final String text;
-  final Color color;
-  final String font;
-  const DraggableTextWidget({super.key, required this.text, required this.color, required this.font});
-
-  @override
-  State<DraggableTextWidget> createState() => _DraggableTextWidgetState();
-}
-
-class _DraggableTextWidgetState extends State<DraggableTextWidget> {
-  Offset position = const Offset(100, 100);
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned(
-      left: position.dx,
-      top: position.dy,
-      child: GestureDetector(
-        onPanUpdate: (details) => setState(() => position += details.delta),
-        child: Text(
-          widget.text,
-          style: TextStyle(
-            color: widget.color,
-            fontFamily: widget.font,
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            shadows: const [Shadow(blurRadius: 10, color: Colors.black54)],
-          ),
-        ),
-      ),
-    );
-  }
 }

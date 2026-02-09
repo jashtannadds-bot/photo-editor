@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:photho_editor/circlecollage.dart';
 import 'package:photho_editor/collage.dart';
+import 'package:photho_editor/filter_editor.dart';
 import 'package:photho_editor/freestylecollage.dart';
 import 'package:photho_editor/gridcollage.dart';
 import 'package:photho_editor/heartflower.dart';

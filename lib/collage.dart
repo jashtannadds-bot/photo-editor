@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:photho_editor/circlecollage.dart';
 import 'package:photho_editor/diamondcollage.dart';
+import 'package:photho_editor/filter_editor.dart';
 import 'package:photho_editor/flowercollage.dart';
 import 'package:photho_editor/freestylecollage.dart';
 import 'package:photho_editor/gridcollage.dart';
@@ -93,13 +94,13 @@ class CollageListScreen extends StatelessWidget {
       "color": Colors.brown,
       "route": "scan",
     },
+
     {
-      "name": "FreeStyle",
+      "name": "Filter",
       "icon": Icons.view_column_rounded,
       "color": Colors.brown,
-      "route": "Free",
+      "route": "Filter",
     },
-    
   ];
 
   @override
@@ -109,7 +110,7 @@ class CollageListScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text(
           "Select Layout",
-          style: TextStyle(fontWeight: FontWeight.bold,color: Colors.white),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         backgroundColor: Colors.black,
         elevation: 0,
@@ -213,11 +214,11 @@ class CollageListScreen extends StatelessWidget {
                       builder: (context) => const SlitScanCollage(),
                     ),
                   );
-                } else if (layout['route'] == 'ree') {
+                } else if (layout['route'] == 'Filter') {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const FreestyleCustomScreen(),
+                      builder: (context) => const FilterEditorScreen(),
                     ),
                   );
                 }

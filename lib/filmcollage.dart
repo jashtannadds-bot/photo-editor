@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:photho_editor/collagecontrol.dart';
 import 'package:photho_editor/collageimagehelper.dart';
+import 'package:photho_editor/commontext.dart';
+import 'package:photho_editor/flowercollage.dart';
 import 'package:photho_editor/sharedstyle.dart';
 
 class AuraCollageScreen extends StatefulWidget {
@@ -17,8 +19,10 @@ class _AuraCollageScreenState extends State<AuraCollageScreen> {
   List<File?> images = List.filled(5, null);
   final GlobalKey _auraKey = GlobalKey();
 
-  // 1. Unified Style Initialization
+  // Shared state for Text and UI behavior
+  List<TextProperties> textItems = [];
   late CollageStyle myStyle;
+  bool isDraggingText = false;
 
   @override
   void initState() {
@@ -35,9 +39,32 @@ class _AuraCollageScreenState extends State<AuraCollageScreen> {
     if (picked != null) setState(() => images[index] = File(picked.path));
   }
 
+  void _handleTextAction({TextProperties? existing, int? index}) {
+    CollageTextHandler.showTextEditor(
+      context: context,
+      initialText: existing?.text,
+      initialColor: existing?.color,
+      initialFont: existing?.font,
+      onComplete: (text, color, font) {
+        setState(() {
+          if (index != null) {
+            textItems[index] = textItems[index].copyWith(
+              text: text,
+              color: color,
+              font: font,
+            );
+          } else {
+            textItems.add(TextProperties(text: text, color: color, font: font));
+          }
+        });
+      },
+    );
+  }
+
   void resetCollage() {
     setState(() {
       images = List.filled(5, null);
+      textItems.clear();
       myStyle.borderColor = Colors.orangeAccent;
       myStyle.borderWidth = 1.0;
       myStyle.activeBackground = appBackgrounds[0];
@@ -54,69 +81,153 @@ class _AuraCollageScreenState extends State<AuraCollageScreen> {
         title: Text(
           "AURA FILM STRIP",
           style: TextStyle(
-            fontSize: 10, 
-            letterSpacing: 4, 
-            color: myStyle.borderColor.withOpacity(0.7)
+            fontSize: 10,
+            letterSpacing: 4,
+            color: myStyle.borderColor.withOpacity(0.7),
           ),
         ),
         centerTitle: true,
         leading: const BackButton(color: Colors.white),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Colors.white70),
-            onPressed: resetCollage,
+            icon: const Icon(Icons.text_fields, color: Colors.white),
+            onPressed: () => _handleTextAction(),
           ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: RepaintBoundary(
-                key: _auraKey,
-                child: Container(
-                  // 2. Dynamic Background from Shared Style
-                  decoration: myStyle.activeBackground.decoration,
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  child: Column(
-                    children: [
-                      Text(
-                        "NEGATIVE // ISO 400",
-                        style: TextStyle(
-                          color: myStyle.borderColor,
-                          letterSpacing: 8,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      ...List.generate(5, (index) => _buildFilmFrame(index)),
-                      const SizedBox(height: 40),
-                    ],
-                  ),
-                ),
+          TextButton(
+            onPressed: () => CollageHelper.saveCollage(_auraKey, context),
+            child: const Text(
+              "SAVE",
+              style: TextStyle(
+                color: Colors.pinkAccent,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: RepaintBoundary(
+                    key: _auraKey,
+                    child: Container(
+                      decoration: myStyle.activeBackground.decoration,
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Column(
+                            children: [
+                              Text(
+                                "NEGATIVE // ISO 400",
+                                style: TextStyle(
+                                  color: myStyle.borderColor,
+                                  letterSpacing: 8,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              ...List.generate(
+                                5,
+                                (index) => _buildFilmFrame(index),
+                              ),
+                              const SizedBox(height: 40),
+                            ],
+                          ),
 
-          // 3. Control Panel Integration
-          CollageControlPanel(
-            style: myStyle,
-            onColorChanged: (newColor) => setState(() => myStyle.borderColor = newColor),
-            onWidthChanged: (newWidth) => setState(() => myStyle.borderWidth = newWidth),
-            onBackgroundChanged: (newBg) => setState(() => myStyle.activeBackground = newBg),
+                          // Floating Text Layer
+                          for (int i = 0; i < textItems.length; i++)
+                            DraggableTextWidget(
+                              properties: textItems[i],
+                              onTap: () => _handleTextAction(
+                                existing: textItems[i],
+                                index: i,
+                              ),
+                              onDragStatusChanged: (dragging) =>
+                                  setState(() => isDraggingText = dragging),
+                              onDelete: () =>
+                                  setState(() => textItems.removeAt(i)),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 120),
+            ],
           ),
-          
-          // Save Button
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: FloatingActionButton.extended(
-              backgroundColor: Colors.pinkAccent,
-              onPressed: () => CollageHelper.saveCollage(_auraKey, context),
-              label: const Text("SAVE ROLL", style: TextStyle(color: Colors.white)),
-              icon: const Icon(Icons.camera_roll, color: Colors.white),
+
+          // THE DUSTBIN
+          if (isDraggingText)
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Container(
+                margin: const EdgeInsets.all(130),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withOpacity(0.9),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.red.withOpacity(0.4),
+                      blurRadius: 20,
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.delete_outline,
+                  color: Colors.white,
+                  size: 32,
+                ),
+              ),
             ),
+
+          // DRAGGABLE CONTROL SHEET
+          DraggableScrollableSheet(
+            initialChildSize: 0.12,
+            minChildSize: 0.12,
+            maxChildSize: 0.5,
+            builder: (context, scrollController) {
+              return Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.95),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(30),
+                  ),
+                ),
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 12),
+                      // Container(
+                      //   width: 40,
+                      //   height: 4,
+                      //   decoration: BoxDecoration(
+                      //     color: Colors.white24,
+                      //     borderRadius: BorderRadius.circular(2),
+                      //   ),
+                      // ),
+                      CollageControlPanel(
+                        style: myStyle,
+                        onColorChanged: (newColor) =>
+                            setState(() => myStyle.borderColor = newColor),
+                        onWidthChanged: (newWidth) =>
+                            setState(() => myStyle.borderWidth = newWidth),
+                        onBackgroundChanged: (newBg) =>
+                            setState(() => myStyle.activeBackground = newBg),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -129,13 +240,15 @@ class _AuraCollageScreenState extends State<AuraCollageScreen> {
       margin: const EdgeInsets.only(bottom: 15, left: 10, right: 10),
       child: Stack(
         children: [
-          // The Image Container
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 45),
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.black,
-                border: Border.all(color: myStyle.borderColor.withOpacity(0.2), width: 0.5),
+                border: Border.all(
+                  color: myStyle.borderColor.withOpacity(0.2),
+                  width: 0.5,
+                ),
               ),
               child: images[index] == null
                   ? GestureDetector(
@@ -149,7 +262,9 @@ class _AuraCollageScreenState extends State<AuraCollageScreen> {
                       ),
                     )
                   : InteractiveViewer(
-                      clipBehavior: Clip.hardEdge,
+                      boundaryMargin: const EdgeInsets.all(100),
+                      minScale: 1.0,
+                      maxScale: 5.0,
                       child: GestureDetector(
                         onDoubleTap: () => pickImage(index),
                         child: Image.file(
@@ -162,8 +277,6 @@ class _AuraCollageScreenState extends State<AuraCollageScreen> {
                     ),
             ),
           ),
-
-          // 4. Custom Painter for Film Details
           IgnorePointer(
             child: CustomPaint(
               size: Size.infinite,
@@ -173,18 +286,16 @@ class _AuraCollageScreenState extends State<AuraCollageScreen> {
               ),
             ),
           ),
-
-          // Frame Numbering
           Positioned(
             left: 20,
             bottom: 12,
             child: Text(
               "0${index + 1}A",
               style: TextStyle(
-                color: myStyle.borderColor.withOpacity(0.8), 
+                color: myStyle.borderColor.withOpacity(0.8),
                 fontSize: 8,
                 fontWeight: FontWeight.bold,
-                fontFamily: 'monospace'
+                fontFamily: 'monospace',
               ),
             ),
           ),
@@ -211,9 +322,7 @@ class FilmStripPainter extends CustomPainter {
     double holeHeight = 14;
     double padding = 20;
 
-    // Draw Sprocket Holes (Top and Bottom of the strip)
     for (double i = 10; i < size.height; i += 28) {
-      // Left Holes
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromLTWH(padding, i, holeWidth, holeHeight),
@@ -221,17 +330,20 @@ class FilmStripPainter extends CustomPainter {
         ),
         holePaint,
       );
-      // Right Holes
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromLTWH(size.width - padding - holeWidth, i, holeWidth, holeHeight),
+          Rect.fromLTWH(
+            size.width - padding - holeWidth,
+            i,
+            holeWidth,
+            holeHeight,
+          ),
           const Radius.circular(2),
         ),
         holePaint,
       );
     }
 
-    // Inner frame border (Around the image area)
     canvas.drawRect(
       Rect.fromLTWH(45, 0, size.width - 90, size.height),
       borderPaint,

@@ -4,14 +4,14 @@ import 'dart:ui';
 class CollageTextHandler {
   static void showTextEditor({
     required BuildContext context,
-    String? existingText,
-    Color? existingColor,
-    String? existingFont,
+    String? initialText,
+    Color? initialColor,
+    String? initialFont,
     required Function(String text, Color color, String font) onComplete,
   }) {
-    TextEditingController controller = TextEditingController(text: existingText ?? "");
-    Color selectedColor = existingColor ?? Colors.white;
-    String selectedFont = existingFont ?? 'Roboto';
+    TextEditingController controller = TextEditingController(text: initialText ?? "");
+    Color selectedColor = initialColor ?? Colors.white;
+    String selectedFont = initialFont ?? 'Roboto';
 
     showModalBottomSheet(
       context: context,
@@ -27,17 +27,13 @@ class CollageTextHandler {
               color: Colors.black.withOpacity(0.85),
               child: Column(
                 children: [
-                  // Top Bar
                   SafeArea(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          IconButton(
-                            icon: const Icon(Icons.close, color: Colors.white),
-                            onPressed: () => Navigator.pop(context),
-                          ),
+                          IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: () => Navigator.pop(context)),
                           TextButton(
                             onPressed: () {
                               if (controller.text.isNotEmpty) {
@@ -45,35 +41,27 @@ class CollageTextHandler {
                               }
                               Navigator.pop(context);
                             },
-                            child: const Text("DONE", style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, letterSpacing: 2)),
+                            child: const Text("DONE", style: TextStyle(color: Colors.pinkAccent, fontWeight: FontWeight.bold, letterSpacing: 2)),
                           ),
                         ],
                       ),
                     ),
                   ),
-                  // Input Area
                   Expanded(
                     child: Center(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(horizontal: 30),
-                        child: TextField(
-                          controller: controller,
-                          autofocus: true,
-                          maxLines: null,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: selectedColor, fontFamily: selectedFont, fontSize: 38, fontWeight: FontWeight.bold),
-                          decoration: const InputDecoration(border: InputBorder.none, hintText: "TYPE...", hintStyle: TextStyle(color: Colors.white24)),
-                        ),
+                      child: TextField(
+                        controller: controller,
+                        autofocus: true,
+                        maxLines: null,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: selectedColor, fontFamily: selectedFont, fontSize: 38, fontWeight: FontWeight.bold),
+                        decoration: const InputDecoration(border: InputBorder.none, hintText: "TYPE...", hintStyle: TextStyle(color: Colors.white24)),
                       ),
                     ),
                   ),
-                  // Toolbox (Pinned to Keyboard)
                   Container(
                     padding: EdgeInsets.only(bottom: kbHeight + 20, top: 20),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.5),
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-                    ),
+                    decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), borderRadius: const BorderRadius.vertical(top: Radius.circular(30))),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -103,10 +91,10 @@ class CollageTextHandler {
             margin: const EdgeInsets.only(right: 12),
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
             decoration: BoxDecoration(
-              color: current == f ? Colors.white : Colors.white10,
+              color: current == f ? Colors.pinkAccent : Colors.white10,
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Text(f, style: TextStyle(color: current == f ? Colors.black : Colors.white, fontFamily: f, fontWeight: FontWeight.bold)),
+            child: Text(f, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           )),
         ).toList(),
       ),
@@ -116,7 +104,7 @@ class CollageTextHandler {
   static Widget _buildColorPicker(Color current, Function(Color) onSelect) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: [Colors.white, Colors.red, Colors.yellow, Colors.blue, Colors.green].map((c) => GestureDetector(
+      children: [Colors.white, Colors.redAccent, Colors.yellowAccent, Colors.blueAccent, Colors.greenAccent].map((c) => GestureDetector(
         onTap: () => onSelect(c),
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 10),
