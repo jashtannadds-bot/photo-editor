@@ -20,6 +20,7 @@ class _FilterEditorScreenState extends State<FilterEditorScreen> {
   double _brightness = 0.0;
   double _contrast = 1.0;
   double _saturation = 1.0;
+  double _vignette = 0.0;
   double _warmth = 0.0;
   double _highlights = 0.0;
   double _shadows = 0.0;
@@ -94,40 +95,48 @@ class _FilterEditorScreenState extends State<FilterEditorScreen> {
               children: [
                 // PREVIEW AREA
                 Expanded(
-                  child: RepaintBoundary(
-                    key: _saveKey,
-                    child: Center(
-                      child: ColorFiltered(
-                        colorFilter: ColorFilter.matrix(
-                          _getWarmthMatrix(_warmth),
-                        ),
-                        child: ColorFiltered(
-                          colorFilter: ColorFilter.matrix(
-                            _getHighlightShadowMatrix(_highlights, _shadows),
-                          ),
-                          child: ColorFiltered(
-                            colorFilter: ColorFilter.matrix(
-                              _getAmbianceMatrix(_ambiance),
-                            ),
-                            child: ColorFiltered(
-                              colorFilter: ColorFilter.matrix(
-                                _calculateFinalMatrix(),
-                              ), // Presets & Brightness
-                              child: Image.file(
-                                _selectedImage!,
-                                fit: BoxFit.contain,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
+  child: RepaintBoundary(
+    key: _saveKey,
+    child: Center(
+      child: ShaderMask(
+        shaderCallback: (rect) {
+          return RadialGradient(
+            center: Alignment.center,
+            radius: 1.2,
+            colors: [
+              Colors.transparent, 
+              Colors.black.withOpacity(_vignette.clamp(0.0, 1.0))
+            ],
+            stops: const [0.6, 1.0],
+          ).createShader(rect);
+        },
+        blendMode: BlendMode.darken,
+      
+      // Layer 1: Saturation (Pure Color)
+      child: ColorFiltered(
+        colorFilter: ColorFilter.matrix(_getSaturationMatrix(_saturation)),
+        // Layer 2: Contrast (Depth)
+        child: ColorFiltered(
+          colorFilter: ColorFilter.matrix(_getContrastMatrix(_contrast)),
+          // Layer 3: Warmth/Temperature
+          child: ColorFiltered(
+            colorFilter: ColorFilter.matrix(_getWarmthMatrix(_warmth)),
+            // Layer 4: The Base Filter + Brightness
+            child: ColorFiltered(
+              colorFilter: ColorFilter.matrix(_calculateFinalMatrix()),
+              child: Image.file(_selectedImage!, fit: BoxFit.contain),
+            ),
+          ),
+        ),
+      ),
+    ),
+  ),
+),
                 // TOOLS PANEL (Presets + Sliders)
-                _buildControlTabs(),
-              ],
+                
+          ),
+          _buildControlTabs(),
+          ],
             ),
     );
   }
@@ -136,7 +145,7 @@ class _FilterEditorScreenState extends State<FilterEditorScreen> {
     return DefaultTabController(
       length: 2,
       child: Container(
-        height: 220,
+        height: 250,
         color: const Color(0xFF121212),
         child: Column(
           children: [
@@ -159,32 +168,43 @@ class _FilterEditorScreenState extends State<FilterEditorScreen> {
                         _buildFilterThumb(appFilters[i]),
                   ),
                   // Tab 2: Manual Sliders
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      children: [
-                        _buildSlider(
-                          "BRIGHTNESS",
-                          _brightness,
-                          -1,
-                          1,
-                          (v) => setState(() => _brightness = v),
+                  Scrollbar(
+                    child: SingleChildScrollView(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          children: [
+                            _buildSlider(
+                              "BRIGHTNESS",
+                              _brightness,
+                              -1,
+                              1,
+                              (v) => setState(() => _brightness = v),
+                            ),
+                            _buildSlider(
+                              "CONTRAST",
+                              _contrast,
+                              0.5,
+                              1.5,
+                              (v) => setState(() => _contrast = v),
+                            ),
+                            _buildSlider(
+                              "SATURATION",
+                              _saturation,
+                              0,
+                              2,
+                              (v) => setState(() => _saturation = v),
+                            ),
+
+                            _buildSlider("WARMTH", _warmth, -1, 1, (v) => setState(() => _warmth = v)),
+          _buildSlider("VIGNETTE", _vignette, 0, 1, (v) => setState(() => _vignette = v)),
+          _buildSlider("AMBIANCE", _ambiance, -1, 1, (v) => setState(() => _ambiance = v)),
+          _buildSlider("HIGHLIGHTS", _highlights, -1, 1, (v) => setState(() => _highlights = v)),
+          _buildSlider("SHADOWS", _shadows, -1, 1, (v) => setState(() => _shadows = v)),
+                          const SizedBox(height: 20),
+                          ],
                         ),
-                        _buildSlider(
-                          "CONTRAST",
-                          _contrast,
-                          0.5,
-                          1.5,
-                          (v) => setState(() => _contrast = v),
-                        ),
-                        _buildSlider(
-                          "SATURATION",
-                          _saturation,
-                          0,
-                          2,
-                          (v) => setState(() => _saturation = v),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ],
@@ -257,58 +277,26 @@ class _FilterEditorScreenState extends State<FilterEditorScreen> {
 
   // --- MATRIX MATH HELPER FUNCTIONS ---
   List<double> _getSaturationMatrix(double saturation) {
-    final double r = 0.2126 * (1 - saturation);
-    final double g = 0.7152 * (1 - saturation);
-    final double b = 0.0722 * (1 - saturation);
-    return [
-      r + saturation,
-      g,
-      b,
-      0,
-      0,
-      r,
-      g + saturation,
-      b,
-      0,
-      0,
-      r,
-      g,
-      b + saturation,
-      0,
-      0,
-      0,
-      0,
-      0,
-      1,
-      0,
-    ];
-  }
-
+  final double r = 0.2126 * (1 - saturation);
+  final double g = 0.7152 * (1 - saturation);
+  final double b = 0.0722 * (1 - saturation);
+  
+  return [
+    r + saturation, g, b, 0, 0,
+    r, g + saturation, b, 0, 0,
+    r, g, b + saturation, 0, 0,
+    0, 0, 0, 1, 0,
+  ];
+}
   List<double> _getContrastMatrix(double contrast) {
-    final double t = (1.0 - contrast) / 2.0 * 255;
-    return [
-      contrast,
-      0,
-      0,
-      0,
-      t,
-      0,
-      contrast,
-      0,
-      0,
-      t,
-      0,
-      0,
-      contrast,
-      0,
-      t,
-      0,
-      0,
-      0,
-      1,
-      0,
-    ];
-  }
+  final double t = (1.0 - contrast) / 2.0 * 255;
+  return [
+    contrast, 0, 0, 0, t,
+    0, contrast, 0, 0, t,
+    0, 0, contrast, 0, t,
+    0, 0, 0, 1, 0,
+  ];
+}
 
   // --- PRO MATH HELPER FUNCTIONS ---
 
@@ -381,6 +369,24 @@ class _FilterEditorScreenState extends State<FilterEditorScreen> {
       0,
     ];
   }
+  List<double> _getTintMatrix(double tint) {
+  return [
+    1, 0, 0, 0, tint * 30, // Red
+    0, 1.1, 0, 0, -tint * 20, // Green
+    0, 0, 1, 0, tint * 30, // Blue
+    0, 0, 0, 1, 0,
+  ];
+}
+
+List<double> _getExposureMatrix(double exposure) {
+  double ev = exposure + 1.0;
+  return [
+    ev, 0, 0, 0, 0,
+    0, ev, 0, 0, 0,
+    0, 0, ev, 0, 0,
+    0, 0, 0, 1, 0,
+  ];
+}
 
   List<double> _getHiShadowMatrix(double highlights, double shadows) {
     double h = 1 + (highlights * 0.1);
