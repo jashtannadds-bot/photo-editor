@@ -40,6 +40,11 @@ dependencies:
   path_provider: ^2.1.5
   permission_handler: ^12.0.1
   gal: ^2.3.2
+  image_background_remover: ^2.0.0
+  flutter_onnxruntime: ^1.6.2
+  image: ^4.2.0
+  dio: ^5.4.1
+  shared_preferences: ^2.3.5
 
 dev_dependencies:
   flutter_test:

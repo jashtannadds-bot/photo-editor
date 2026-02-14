@@ -1,26 +1,39 @@
 import 'package:flutter/material.dart';
-import 'package:photho_editor/circlecollage.dart';
-import 'package:photho_editor/collage.dart';
-import 'package:photho_editor/filter_editor.dart';
-import 'package:photho_editor/freestylecollage.dart';
-import 'package:photho_editor/gridcollage.dart';
-import 'package:photho_editor/heartflower.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:photho_editor/theme_manager.dart';
 import 'package:photho_editor/homescreen.dart';
-import 'package:photho_editor/mickycollage.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MyApp());
+
+  final themeManager = ThemeManager();
+
+  try {
+    await getTemporaryDirectory();
+  } catch (e) {
+    debugPrint('Path provider warm-up failed: $e');
+  }
+
+  runApp(MyApp(themeManager: themeManager));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final ThemeManager themeManager;
+  const MyApp({super.key, required this.themeManager});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: HomeScreen(),
+    return ListenableBuilder(
+      listenable: themeManager,
+      builder: (context, _) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: ThemeManager.lightTheme,
+          darkTheme: ThemeManager.darkTheme,
+          themeMode: themeManager.themeMode,
+          home: const HomeScreen(),
+        );
+      },
     );
   }
 }

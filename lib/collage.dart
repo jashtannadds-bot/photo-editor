@@ -105,14 +105,20 @@ class CollageListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           "Select Layout",
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.onSurface,
+          ),
         ),
-        backgroundColor: Colors.black,
+        backgroundColor: theme.appBarTheme.backgroundColor,
         elevation: 0,
       ),
       body: Padding(
@@ -225,9 +231,21 @@ class CollageListScreen extends StatelessWidget {
               },
               child: Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E1E),
+                  color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white10, width: 1),
+                  border: Border.all(
+                    color: isDark ? Colors.white10 : Colors.black12,
+                    width: 1,
+                  ),
+                  boxShadow: isDark
+                      ? []
+                      : [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -247,16 +265,19 @@ class CollageListScreen extends StatelessWidget {
                     const SizedBox(height: 15),
                     Text(
                       layout['name'],
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface,
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 5),
-                    const Text(
+                    Text(
                       "5 Photos",
-                      style: TextStyle(color: Colors.white38, fontSize: 12),
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface.withOpacity(0.5),
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
