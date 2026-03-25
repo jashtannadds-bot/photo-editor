@@ -8,7 +8,8 @@ import 'package:photho_editor/commontext.dart';
 import 'package:photho_editor/sharedstyle.dart';
 
 class FlowerCollageScreen extends StatefulWidget {
-  const FlowerCollageScreen({super.key});
+  final List<File>? initialImages;
+  const FlowerCollageScreen({super.key, this.initialImages});
 
   @override
   State<FlowerCollageScreen> createState() => _FlowerCollageScreenState();
@@ -16,7 +17,7 @@ class FlowerCollageScreen extends StatefulWidget {
 
 class _FlowerCollageScreenState extends State<FlowerCollageScreen> {
   final ImagePicker picker = ImagePicker();
-  List<File?> images = List.filled(6, null);
+  late List<File?> images;
   final GlobalKey _flowerKey = GlobalKey();
 
   // Shared state for Text and UI behavior
@@ -27,6 +28,15 @@ class _FlowerCollageScreenState extends State<FlowerCollageScreen> {
   @override
   void initState() {
     super.initState();
+
+    // Initialize with passed images or empty slots
+    images = List.filled(6, null);
+    if (widget.initialImages != null) {
+      for (int i = 0; i < widget.initialImages!.length && i < 6; i++) {
+        images[i] = widget.initialImages![i];
+      }
+    }
+
     myStyle = CollageStyle(
       borderColor: Colors.white,
       borderWidth: 3.0,
@@ -396,16 +406,10 @@ class FlowerBorderPainter extends CustomPainter {
       );
       path.addOval(Rect.fromCircle(center: petalCenter, radius: petalSize / 2));
     }
-    final Paint glowPaint = Paint()
-      ..color = color.withOpacity(0.3)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = width * 2.5
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
     final Paint borderPaint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
       ..strokeWidth = width;
-    canvas.drawPath(path, glowPaint);
     canvas.drawPath(path, borderPaint);
   }
 

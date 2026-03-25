@@ -4,11 +4,12 @@ import 'package:image_picker/image_picker.dart';
 import 'package:photho_editor/collagecontrol.dart';
 import 'package:photho_editor/collageimagehelper.dart';
 import 'package:photho_editor/commontext.dart';
-import 'package:photho_editor/heartcollage.dart';
 import 'package:photho_editor/sharedstyle.dart';
+import 'package:photho_editor/collage_models.dart';
 
 class DynamicGridCollageScreen extends StatefulWidget {
-  const DynamicGridCollageScreen({super.key});
+  final List<File>? initialImages;
+  const DynamicGridCollageScreen({super.key, this.initialImages});
 
   @override
   State<DynamicGridCollageScreen> createState() =>
@@ -17,7 +18,7 @@ class DynamicGridCollageScreen extends StatefulWidget {
 
 class _DynamicGridCollageScreenState extends State<DynamicGridCollageScreen> {
   final ImagePicker picker = ImagePicker();
-  List<File?> images = List.filled(5, null);
+  late List<File?> images;
   final GlobalKey _gridKey = GlobalKey();
 
   List<TextProperties> textItems = [];
@@ -27,6 +28,15 @@ class _DynamicGridCollageScreenState extends State<DynamicGridCollageScreen> {
   @override
   void initState() {
     super.initState();
+
+    // Initialize with passed images or empty slots
+    images = List.filled(5, null);
+    if (widget.initialImages != null) {
+      for (int i = 0; i < widget.initialImages!.length && i < 5; i++) {
+        images[i] = widget.initialImages![i];
+      }
+    }
+
     myStyle = CollageStyle(
       borderColor: Colors.white,
       borderWidth: 4.0,

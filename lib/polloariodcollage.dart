@@ -8,7 +8,8 @@ import 'package:photho_editor/flowercollage.dart';
 import 'package:photho_editor/sharedstyle.dart';
 
 class HangingBulbCollage extends StatefulWidget {
-  const HangingBulbCollage({super.key});
+  final List<File>? initialImages;
+  const HangingBulbCollage({super.key, this.initialImages});
 
   @override
   State<HangingBulbCollage> createState() => _HangingBulbCollageState();
@@ -16,7 +17,7 @@ class HangingBulbCollage extends StatefulWidget {
 
 class _HangingBulbCollageState extends State<HangingBulbCollage> {
   final ImagePicker picker = ImagePicker();
-  List<File?> images = List.filled(5, null);
+  late List<File?> images;
   final GlobalKey _saveKey = GlobalKey();
 
   // Shared state for Text and UI behavior
@@ -27,6 +28,15 @@ class _HangingBulbCollageState extends State<HangingBulbCollage> {
   @override
   void initState() {
     super.initState();
+
+    // Initialize with passed images or empty slots
+    images = List.filled(5, null);
+    if (widget.initialImages != null) {
+      for (int i = 0; i < widget.initialImages!.length && i < 5; i++) {
+        images[i] = widget.initialImages![i];
+      }
+    }
+
     myStyle = CollageStyle(
       borderColor: const Color(0xFFF4EBD0), // Vintage Cream default
       borderWidth: 6.0,
@@ -341,9 +351,6 @@ class BulbStringPainter extends CustomPainter {
       ..color = Colors.white.withOpacity(0.08)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.2;
-    final bulbGlow = Paint()
-      ..color = Colors.amber.withOpacity(0.15)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
     final bulbCore = Paint()..color = Colors.amberAccent.withOpacity(0.8);
 
     _drawRow(
@@ -352,11 +359,10 @@ class BulbStringPainter extends CustomPainter {
       90,
       150,
       [0.34, 0.66],
-      bulbGlow,
       bulbCore,
       stringPaint,
     );
-    _drawRow(canvas, size, 390, 450, [0.48], bulbGlow, bulbCore, stringPaint);
+    _drawRow(canvas, size, 390, 450, [0.48], bulbCore, stringPaint);
   }
 
   void _drawRow(
@@ -365,7 +371,6 @@ class BulbStringPainter extends CustomPainter {
     double startY,
     double ctrlY,
     List<double> bulbPositions,
-    Paint glow,
     Paint core,
     Paint string,
   ) {
@@ -383,7 +388,6 @@ class BulbStringPainter extends CustomPainter {
         Offset(x, y + 20),
         Paint()..color = Colors.white10,
       );
-      canvas.drawCircle(Offset(x, y + 28), 14, glow);
       canvas.drawCircle(Offset(x, y + 28), 3.5, core);
     }
   }

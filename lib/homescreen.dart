@@ -7,6 +7,7 @@ import 'package:photho_editor/filter_editor.dart';
 import 'package:photho_editor/freestylecollage.dart';
 import 'package:photho_editor/bg_remover_screen.dart';
 import 'package:photho_editor/ai_enhancer_screen.dart';
+import 'package:photho_editor/magic_eraser_screen.dart';
 import 'package:photho_editor/theme_manager.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -35,6 +36,35 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     }
+  }
+
+  // New function to handle Collage Flow (Pick first, then go to editor)
+  Future<void> _pickAndRouteCollage(BuildContext context) async {
+    final List<XFile> pickedFiles = await _picker.pickMultiImage();
+
+    if (pickedFiles.isEmpty) return;
+
+    if (pickedFiles.length > 5) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("max image selection capacity reached"),
+          backgroundColor: Colors.redAccent,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+
+    final List<File> files = pickedFiles.map((x) => File(x.path)).toList();
+
+    // Route to the layout picker screen first
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => CollageListScreen(images: files)),
+    );
   }
 
   @override
@@ -197,26 +227,41 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 const SizedBox(height: 20),
 
-                // 4. GRID COLLAGE TAB
+                // 4. MAGIC ERASER TAB
                 _buildHomeTab(
                   context,
-                  title: "LAYOUTS",
-                  subtitle: "Structured photo grids",
-                  icon: Icons.grid_view_rounded,
-                  color: Colors.purpleAccent,
-                  onTap: () {
-                    Navigator.push(
+                  title: "MAGIC ERASER",
+                  subtitle: "Erase unwanted objects",
+                  icon: Icons.auto_fix_normal_rounded,
+                  color: Colors.blueAccent,
+                  isNew: true,
+                  onTap: () => _showSourceDialog(
+                    context,
+                    (source) => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const CollageListScreen(),
+                        builder: (context) =>
+                            MagicEraserScreen(initialSource: source),
                       ),
-                    );
-                  },
+                    ),
+                  ),
                 ),
 
                 const SizedBox(height: 20),
 
-                // 5. FREESTYLE COLLAGE TAB
+                // 5. COLLAGE TAB
+                _buildHomeTab(
+                  context,
+                  title: "COLLAGE",
+                  subtitle: "Beautiful layouts & grids",
+                  icon: Icons.grid_view_rounded,
+                  color: Colors.pinkAccent,
+                  onTap: () => _pickAndRouteCollage(context),
+                ),
+
+                const SizedBox(height: 20),
+
+                // 6. FREESTYLE TAB
                 _buildHomeTab(
                   context,
                   title: "FREESTYLE",

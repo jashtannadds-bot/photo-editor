@@ -7,7 +7,8 @@ import 'package:photho_editor/commontext.dart'; // Ensure this matches our updat
 import 'package:photho_editor/sharedstyle.dart';
 
 class BubbleCollageScreen extends StatefulWidget {
-  const BubbleCollageScreen({super.key});
+  final List<File>? initialImages;
+  const BubbleCollageScreen({super.key, this.initialImages});
 
   @override
   State<BubbleCollageScreen> createState() => _BubbleCollageScreenState();
@@ -15,7 +16,7 @@ class BubbleCollageScreen extends StatefulWidget {
 
 class _BubbleCollageScreenState extends State<BubbleCollageScreen> {
   final ImagePicker picker = ImagePicker();
-  List<File?> images = List.filled(6, null);
+  late List<File?> images;
   final GlobalKey _bubbleKey = GlobalKey();
 
   // Shared state for text and drag-to-delete
@@ -26,6 +27,15 @@ class _BubbleCollageScreenState extends State<BubbleCollageScreen> {
   @override
   void initState() {
     super.initState();
+
+    // Initialize with passed images or empty slots
+    images = List.filled(6, null);
+    if (widget.initialImages != null) {
+      for (int i = 0; i < widget.initialImages!.length && i < 6; i++) {
+        images[i] = widget.initialImages![i];
+      }
+    }
+
     myStyle = CollageStyle(
       borderColor: Colors.white,
       borderWidth: 3.0,

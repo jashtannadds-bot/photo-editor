@@ -8,7 +8,8 @@ import 'package:photho_editor/flowercollage.dart';
 import 'package:photho_editor/sharedstyle.dart';
 
 class AuraCollageScreen extends StatefulWidget {
-  const AuraCollageScreen({super.key});
+  final List<File>? initialImages;
+  const AuraCollageScreen({super.key, this.initialImages});
 
   @override
   State<AuraCollageScreen> createState() => _AuraCollageScreenState();
@@ -16,7 +17,7 @@ class AuraCollageScreen extends StatefulWidget {
 
 class _AuraCollageScreenState extends State<AuraCollageScreen> {
   final ImagePicker picker = ImagePicker();
-  List<File?> images = List.filled(5, null);
+  late List<File?> images;
   final GlobalKey _auraKey = GlobalKey();
 
   // Shared state for Text and UI behavior
@@ -27,6 +28,15 @@ class _AuraCollageScreenState extends State<AuraCollageScreen> {
   @override
   void initState() {
     super.initState();
+
+    // Initialize with passed images or empty slots
+    images = List.filled(5, null);
+    if (widget.initialImages != null) {
+      for (int i = 0; i < widget.initialImages!.length && i < 5; i++) {
+        images[i] = widget.initialImages![i];
+      }
+    }
+
     myStyle = CollageStyle(
       borderColor: Colors.orangeAccent, // Kodak Classic Default
       borderWidth: 1.0,

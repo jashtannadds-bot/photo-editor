@@ -8,7 +8,8 @@ import 'package:photho_editor/flowercollage.dart';
 import 'package:photho_editor/sharedstyle.dart';
 
 class PuzzleCollageScreen extends StatefulWidget {
-  const PuzzleCollageScreen({super.key});
+  final List<File>? initialImages;
+  const PuzzleCollageScreen({super.key, this.initialImages});
 
   @override
   State<PuzzleCollageScreen> createState() => _PuzzleCollageScreenState();
@@ -16,7 +17,7 @@ class PuzzleCollageScreen extends StatefulWidget {
 
 class _PuzzleCollageScreenState extends State<PuzzleCollageScreen> {
   final ImagePicker picker = ImagePicker();
-  List<File?> images = List.filled(5, null);
+  late List<File?> images;
   final GlobalKey _puzzleKey = GlobalKey();
 
   // Shared state for Text and UI behavior
@@ -27,6 +28,15 @@ class _PuzzleCollageScreenState extends State<PuzzleCollageScreen> {
   @override
   void initState() {
     super.initState();
+
+    // Initialize with passed images or empty slots
+    images = List.filled(5, null);
+    if (widget.initialImages != null) {
+      for (int i = 0; i < widget.initialImages!.length && i < 5; i++) {
+        images[i] = widget.initialImages![i];
+      }
+    }
+
     myStyle = CollageStyle(
       borderColor: Colors.white,
       borderWidth: 3.0,

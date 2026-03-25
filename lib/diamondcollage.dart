@@ -9,7 +9,8 @@ import 'package:photho_editor/flowercollage.dart';
 import 'package:photho_editor/sharedstyle.dart';
 
 class ProCameraLensCollage extends StatefulWidget {
-  const ProCameraLensCollage({super.key});
+  final List<File>? initialImages;
+  const ProCameraLensCollage({super.key, this.initialImages});
 
   @override
   State<ProCameraLensCollage> createState() => _ProCameraLensCollageState();
@@ -17,7 +18,7 @@ class ProCameraLensCollage extends StatefulWidget {
 
 class _ProCameraLensCollageState extends State<ProCameraLensCollage> {
   final ImagePicker picker = ImagePicker();
-  List<File?> images = List.generate(5, (_) => null);
+  late List<File?> images;
   final GlobalKey _lensKey = GlobalKey();
 
   // Shared state for Text and UI behavior
@@ -28,6 +29,15 @@ class _ProCameraLensCollageState extends State<ProCameraLensCollage> {
   @override
   void initState() {
     super.initState();
+
+    // Initialize with passed images or empty slots
+    images = List.generate(5, (_) => null);
+    if (widget.initialImages != null) {
+      for (int i = 0; i < widget.initialImages!.length && i < 5; i++) {
+        images[i] = widget.initialImages![i];
+      }
+    }
+
     myStyle = CollageStyle(
       borderColor: Colors.white,
       borderWidth: 1.0,

@@ -8,7 +8,8 @@ import 'package:photho_editor/commontext.dart'; // Ensure this has our updated h
 import 'package:photho_editor/sharedstyle.dart';
 
 class CollageEditorScreen extends StatefulWidget {
-  const CollageEditorScreen({super.key});
+  final List<File>? initialImages;
+  const CollageEditorScreen({super.key, this.initialImages});
 
   @override
   State<CollageEditorScreen> createState() => _CollageEditorScreenState();
@@ -18,8 +19,8 @@ class _CollageEditorScreenState extends State<CollageEditorScreen> {
   final ImagePicker picker = ImagePicker();
   final GlobalKey _collageKey = GlobalKey();
 
-  List<File?> gridImages = List.filled(4, null);
-  File? overlayImage;
+  late List<File?> gridImages;
+  late File? overlayImage;
 
   List<TextProperties> textItems = [];
   late CollageStyle myStyle;
@@ -28,6 +29,20 @@ class _CollageEditorScreenState extends State<CollageEditorScreen> {
   @override
   void initState() {
     super.initState();
+
+    // Initialize with passed images
+    gridImages = List.filled(4, null);
+    overlayImage = null;
+
+    if (widget.initialImages != null) {
+      if (widget.initialImages!.isNotEmpty) {
+        overlayImage = widget.initialImages![0];
+      }
+      for (int i = 1; i < widget.initialImages!.length && i < 5; i++) {
+        gridImages[i - 1] = widget.initialImages![i];
+      }
+    }
+
     myStyle = CollageStyle(
       borderColor: Colors.white,
       borderWidth: 2.0,

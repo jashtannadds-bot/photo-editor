@@ -5,9 +5,11 @@ import 'package:photho_editor/collagecontrol.dart';
 import 'package:photho_editor/collageimagehelper.dart';
 import 'package:photho_editor/commontext.dart';
 import 'package:photho_editor/sharedstyle.dart';
+import 'package:photho_editor/collage_models.dart';
 
 class CenterHeartCollageScreen extends StatefulWidget {
-  const CenterHeartCollageScreen({super.key});
+  final List<File>? initialImages;
+  const CenterHeartCollageScreen({super.key, this.initialImages});
 
   @override
   State<CenterHeartCollageScreen> createState() =>
@@ -18,8 +20,8 @@ class _CenterHeartCollageScreenState extends State<CenterHeartCollageScreen> {
   final ImagePicker picker = ImagePicker();
   final GlobalKey _boundaryKey = GlobalKey();
 
-  List<File?> gridImages = List.filled(4, null);
-  File? heartImage;
+  late List<File?> gridImages;
+  late File? heartImage;
 
   List<TextProperties> textItems = [];
   late CollageStyle myStyle;
@@ -28,6 +30,20 @@ class _CenterHeartCollageScreenState extends State<CenterHeartCollageScreen> {
   @override
   void initState() {
     super.initState();
+
+    // Initialize with passed images
+    gridImages = List.filled(4, null);
+    heartImage = null;
+
+    if (widget.initialImages != null) {
+      if (widget.initialImages!.isNotEmpty) {
+        heartImage = widget.initialImages![0];
+      }
+      for (int i = 1; i < widget.initialImages!.length && i < 5; i++) {
+        gridImages[i - 1] = widget.initialImages![i];
+      }
+    }
+
     myStyle = CollageStyle(
       borderColor: Colors.white,
       borderWidth: 2.0,
@@ -315,103 +331,6 @@ class _CenterHeartCollageScreenState extends State<CenterHeartCollageScreen> {
                     height: double.infinity,
                   ),
                 ),
-        ),
-      ),
-    );
-  }
-}
-
-// --- DATA CLASS ---
-class TextProperties {
-  final String text;
-  final Color color;
-  final String font;
-  TextProperties({required this.text, required this.color, required this.font});
-
-  TextProperties copyWith({String? text, Color? color, String? font}) {
-    return TextProperties(
-      text: text ?? this.text,
-      color: color ?? this.color,
-      font: font ?? this.font,
-    );
-  }
-}
-
-// --- DRAGGABLE TEXT WIDGET ---
-class DraggableTextWidget extends StatefulWidget {
-  final TextProperties properties;
-  final VoidCallback onTap;
-  final VoidCallback onDelete;
-  final Function(bool) onDragStatusChanged;
-
-  const DraggableTextWidget({
-    super.key,
-    required this.properties,
-    required this.onTap,
-    required this.onDelete,
-    required this.onDragStatusChanged,
-  });
-
-  @override
-  State<DraggableTextWidget> createState() => _DraggableTextWidgetState();
-}
-
-class _DraggableTextWidgetState extends State<DraggableTextWidget> {
-  Offset position = const Offset(150, 200);
-  double scale = 1.0;
-  double rotation = 0.0;
-  double baseScale = 1.0;
-  double baseRotation = 0.0;
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned(
-      left: position.dx,
-      top: position.dy,
-      child: GestureDetector(
-        onTap: widget.onTap,
-        onScaleStart: (details) {
-          baseScale = scale;
-          baseRotation = rotation;
-          widget.onDragStatusChanged(true);
-        },
-        onScaleUpdate: (details) {
-          setState(() {
-            position += details.focalPointDelta;
-            scale = (baseScale * details.scale).clamp(0.5, 5.0);
-            rotation = baseRotation + details.rotation;
-          });
-        },
-        onScaleEnd: (details) {
-          widget.onDragStatusChanged(false);
-          final screenHeight = MediaQuery.of(context).size.height;
-          final screenWidth = MediaQuery.of(context).size.width;
-
-          if (position.dy > screenHeight * 0.6 &&
-              position.dx > screenWidth * 0.2 &&
-              position.dx < screenWidth * 0.8) {
-            widget.onDelete();
-          }
-        },
-        child: Transform(
-          alignment: Alignment.center,
-          transform: Matrix4.identity()
-            ..rotateZ(rotation)
-            ..scale(scale),
-          child: Container(
-            padding: const EdgeInsets.all(10),
-            child: Text(
-              widget.properties.text,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: widget.properties.color,
-                fontFamily: widget.properties.font,
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                shadows: const [Shadow(blurRadius: 10, color: Colors.black54)],
-              ),
-            ),
-          ),
         ),
       ),
     );

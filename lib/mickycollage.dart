@@ -7,7 +7,8 @@ import 'package:photho_editor/commontext.dart';
 import 'package:photho_editor/sharedstyle.dart';
 
 class MickeyFinalDesign extends StatefulWidget {
-  const MickeyFinalDesign({super.key});
+  final List<File>? initialImages;
+  const MickeyFinalDesign({super.key, this.initialImages});
 
   @override
   State<MickeyFinalDesign> createState() => _MickeyFinalDesignState();
@@ -15,7 +16,7 @@ class MickeyFinalDesign extends StatefulWidget {
 
 class _MickeyFinalDesignState extends State<MickeyFinalDesign> {
   final ImagePicker picker = ImagePicker();
-  List<File?> images = List.filled(3, null);
+  late List<File?> images;
   final GlobalKey _mickeyKey = GlobalKey();
 
   // New states for Text and Dragging
@@ -26,6 +27,16 @@ class _MickeyFinalDesignState extends State<MickeyFinalDesign> {
   @override
   void initState() {
     super.initState();
+    // Initialize with passed images or empty slots
+    if (widget.initialImages != null) {
+      images = List.filled(3, null);
+      for (int i = 0; i < widget.initialImages!.length && i < 3; i++) {
+        images[i] = widget.initialImages![i];
+      }
+    } else {
+      images = List.filled(3, null);
+    }
+
     myStyle = CollageStyle(
       borderColor: Colors.white,
       borderWidth: 3.5,
@@ -392,17 +403,11 @@ class MickeyFusedBorderPainter extends CustomPainter {
       ..addOval(headRect)
       ..addOval(leftEarRect)
       ..addOval(rightEarRect);
-    final Paint glowPaint = Paint()
-      ..color = color.withOpacity(0.3)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth * 2
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
     final Paint borderPaint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;
-    canvas.drawPath(fusedPath, glowPaint);
     canvas.drawPath(fusedPath, borderPaint);
   }
 
