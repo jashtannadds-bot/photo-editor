@@ -2653,20 +2653,39 @@ class ComicBurst5Clipper extends CustomClipper<Path> {
     double cx = w / 2, cy = h / 2;
     double side = math.min(w, h);
     
-    // Deterministic irregular burst
+    // Deterministic "Action Burst" for professional comic look
     Path getBurst(double scale) {
       Path p = Path();
-      int points = 14; 
-      double oR = side * 0.42 * scale;
-      double iR = side * 0.22 * scale;
-      // Irregular offsets for a hand-drawn "Boom" look
-      List<double> offsets = [1.3, 0.6, 1.4, 0.7, 1.2, 1.5, 0.5, 1.3, 0.9, 1.6, 0.6, 1.2, 1.4, 0.8];
+      int points = 28; // Increased for a richer, more detailed burst
+      double innerR = side * 0.22 * scale;
+      double outerR = side * 0.46 * scale;
       
       for (int i = 0; i < points; i++) {
-        double angle = (2 * math.pi / points) * i;
-        double r = (i % 2 == 0 ? oR : iR) * offsets[i % offsets.length];
+        double angle = (2 * math.pi / points) * i - (math.pi / 2);
+        double r;
+        
+        if (i % 2 == 0) {
+          // Anchors (Inner points)
+          r = innerR * 0.95;
+        } else {
+          // Spikes (Outer points)
+          // Use a combination of frequencies for that irregular "Boom" look
+          double h1 = math.sin(i * 1.5) * 0.35;
+          double h2 = math.cos(i * 0.8) * 0.2;
+          double variance = 1.0 + h1 + h2;
+          
+          if (i % 4 == 1) {
+            // "Major" spikes are longer
+            r = outerR * 1.15 * variance;
+          } else {
+            // "Minor" spikes are shorter
+            r = outerR * 0.85 * variance;
+          }
+        }
+        
         double x = cx + r * math.cos(angle);
         double y = cy + r * math.sin(angle);
+        
         if (i == 0) p.moveTo(x, y);
         else p.lineTo(x, y);
       }
@@ -2677,21 +2696,19 @@ class ComicBurst5Clipper extends CustomClipper<Path> {
     Path burst = getBurst(1.0);
     if (index == 0) return burst;
 
-    // Background quadrants (2x2 grid)
-    double gap = side * 0.04; // Thick red lines like reference
-    double halfGap = gap / 2;
+    // Background quadrants (2x2 grid) - JOINED SEAMLESSLY
     Rect qRect;
     switch (index) {
-        case 1: qRect = Rect.fromLTRB(0, 0, cx - halfGap, cy - halfGap); break;
-        case 2: qRect = Rect.fromLTRB(cx + halfGap, 0, w, cy - halfGap); break;
-        case 3: qRect = Rect.fromLTRB(cx + halfGap, cy + halfGap, w, h); break;
-        case 4: qRect = Rect.fromLTRB(0, cy + halfGap, cx - halfGap, h); break;
+        case 1: qRect = Rect.fromLTRB(0, 0, cx, cy); break;
+        case 2: qRect = Rect.fromLTRB(cx, 0, w, cy); break;
+        case 3: qRect = Rect.fromLTRB(cx, cy, w, h); break;
+        case 4: qRect = Rect.fromLTRB(0, cy, cx, h); break;
         default: return Path();
     }
     
     Path quad = Path()..addRect(qRect);
-    // Subtract the burst for the "punch out" effect
-    return Path.combine(PathOperation.difference, quad, getBurst(1.02));
+    // Subtract the exact burst shape for a perfect, seamless "punch out" effect
+    return Path.combine(PathOperation.difference, quad, getBurst(1.0));
   }
 
   @override
@@ -2718,6 +2735,395 @@ class ComicBurst5Painter extends CustomPainter {
   }
   @override
   bool shouldRepaint(ComicBurst5Painter oldDelegate) => true;
+}
+
+class MonthClipper extends CustomClipper<Path> {
+  final int index;
+  MonthClipper({required this.index});
+
+  @override
+  Path getClip(Size size) {
+    double w = size.width, h = size.height;
+    if (index == 0) {
+      // Top half
+      return Path()..addRect(Rect.fromLTRB(0, 0, w, h * 0.5));
+    } else {
+      // Bottom half
+      return Path()..addRect(Rect.fromLTRB(0, h * 0.5, w, h));
+    }
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => true;
+}
+
+class DynamicTextClipper extends CustomClipper<Path> {
+  final int index;
+  DynamicTextClipper({required this.index});
+
+  @override
+  Path getClip(Size size) {
+    double w = size.width, h = size.height;
+    Path path = Path();
+    
+    // Curved diagonal split from bottom-left region to top-right region
+    // Matches the reference "2025" image style
+    if (index == 0) {
+      // Top-left part
+      path.moveTo(0, 0);
+      path.lineTo(w, 0);
+      path.lineTo(w, h * 0.15); // Slight drop at top-right
+      path.quadraticBezierTo(w * 0.5, h * 0.5, 0, h * 0.85); // Curve to lower-left
+      path.lineTo(0, 0);
+    } else {
+      // Bottom-right part
+      path.moveTo(0, h);
+      path.lineTo(w, h);
+      path.lineTo(w, h * 0.15); 
+      path.quadraticBezierTo(w * 0.5, h * 0.5, 0, h * 0.85);
+      path.lineTo(0, h);
+    }
+    return path;
+  }
+  
+  static Path getDynamicTextSplitPath(Size size) {
+    double w = size.width, h = size.height;
+    return Path()
+      ..moveTo(w, h * 0.15)
+      ..quadraticBezierTo(w * 0.5, h * 0.5, 0, h * 0.85);
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => true;
+}
+
+class PinwheelClipper extends CustomClipper<Path> {
+  final int index;
+  PinwheelClipper({required this.index});
+
+  @override
+  Path getClip(Size size) => getPetalPath(index, size);
+
+  /// Returns the kite/arrowhead petal path for the given index (0–3).
+  /// Shape: sharp inner tip at canvas CENTER → straight sides → wide rounded outer arc.
+  /// Each petal is a 90° rotation of the base (index 0 points UP).
+  static Path getPetalPath(int index, Size size) {
+    double w = size.width, h = size.height;
+    double cx = w / 2, cy = h / 2;
+    double r = math.min(w, h) * 0.50;
+
+    // ── Petal geometry (base petal points UP) ──────────────────────────────
+    // Sharp inner tip: at canvas center (cx, cy)
+    // Wing corners: left (cx-hw, wingY) and right (cx+hw, wingY)
+    // Outer peak:  (cx, peakY) — the topmost point of the rounded arc
+    double hw    = r * 0.65;         // half-width at the wing corners
+    double wingY = cy - r * 0.42;    // Y position of the two wing corners
+    double peakY = cy - r * 0.96;    // Y position of the outer rounded peak
+
+    Path petal = Path();
+    petal.moveTo(cx, cy);                      // ① sharp inner tip at center
+    petal.lineTo(cx - hw, wingY);             // ② straight line to left wing corner
+
+    // ③ Smooth outer arc from left corner → top peak → right corner
+    //    Two quadratic béziers meet at the peak for a clean rounded top
+    petal.quadraticBezierTo(cx - hw * 0.10, peakY, cx, peakY);
+    petal.quadraticBezierTo(cx + hw * 0.10, peakY, cx + hw, wingY);
+
+    petal.lineTo(cx, cy);                      // ④ straight line back to tip
+    petal.close();
+
+    // Rotate by index × 90° around the canvas center
+    if (index != 0) {
+      final matrix = Matrix4.identity()
+        ..translate(cx, cy)
+        ..rotateZ(index * math.pi / 2)
+        ..translate(-cx, -cy);
+      return petal.transform(matrix.storage);
+    }
+    return petal;
+  }
+
+  @override
+  bool shouldReclip(PinwheelClipper old) => index != old.index;
+}
+
+class PinwheelPainter extends CustomPainter {
+  final Color color;
+  final double width;
+  PinwheelPainter({required this.color, required this.width});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (width < 0.5) return;
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = width
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    for (int i = 0; i < 4; i++) {
+      canvas.drawPath(PinwheelClipper.getPetalPath(i, size), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(PinwheelPainter old) =>
+      old.color != color || old.width != width;
+}
+
+class DiamondGrid4Clipper extends CustomClipper<Path> {
+  final int index;
+  DiamondGrid4Clipper({required this.index});
+
+  static Path _getRoundedTriangle(double cX, double cY, double side, double signX, double signY, double r) {
+    Path path = Path();
+    double rSharp = r * 1.8;
+
+    double startX = cX;
+    double startY = cY + r * signY;
+    path.moveTo(startX, startY);
+    path.quadraticBezierTo(cX, cY, cX + r * signX, cY);
+
+    double lX = cX + side * signX;
+    double lY = cY;
+    path.lineTo(lX - rSharp * signX, lY);
+    
+    double hx = -signX / math.sqrt2;
+    double hy = signY / math.sqrt2;
+    
+    path.quadraticBezierTo(lX, lY, lX + rSharp * hx, lY + rSharp * hy);
+
+    double tX = cX;
+    double tY = cY + side * signY;
+    path.lineTo(tX - rSharp * hx, tY - rSharp * hy);
+    path.quadraticBezierTo(tX, tY, tX, tY - rSharp * signY);
+
+    path.close();
+    return path;
+  }
+
+  static Path getPath(int index, Size size) {
+    double w = size.width;
+    double h = size.height;
+    double cx = w / 2;
+    double cy = h / 2;
+    // We use a small gap so the rounded corners look visually pleasing without
+    // overlapping paths in the center, leaving room for the editor's stroke line.
+    double g = w * 0.015; 
+    double S = math.min(w, h) / 2 - g * 1.5;
+    double r = w * 0.06;
+
+    if (index == 0) return _getRoundedTriangle(cx - g, cy - g, S, -1, -1, r);
+    if (index == 1) return _getRoundedTriangle(cx + g, cy - g, S, 1, -1, r);
+    if (index == 2) return _getRoundedTriangle(cx - g, cy + g, S, -1, 1, r);
+    return _getRoundedTriangle(cx + g, cy + g, S, 1, 1, r);
+  }
+
+  @override
+  Path getClip(Size size) => getPath(index, size);
+
+  @override
+  bool shouldReclip(DiamondGrid4Clipper oldClipper) => index != oldClipper.index;
+}
+
+class SlantedFilmStrip4Clipper extends CustomClipper<Path> {
+  final int index;
+  SlantedFilmStrip4Clipper({required this.index});
+
+  static Path getWindowPath(int index, Size size) {
+    double w = size.width;
+    double h = size.height;
+    if (index == 0) return Path()..addRect(Rect.fromLTWH(0, 0, w, h));
+
+    double cx = w / 2;
+    double cy = h / 2;
+    double ws = w * 0.62;
+    double ww = ws * 0.82;
+    double hw = ww * 0.85;
+    double gapY = ws * 0.1;
+
+    double yCenter = 0;
+    if (index == 1) yCenter = -(hw + gapY);
+    if (index == 3) yCenter = (hw + gapY);
+
+    Rect rect = Rect.fromCenter(center: Offset(0, yCenter), width: ww, height: hw);
+    Path p = Path()..addRect(rect);
+
+    Matrix4 m = Matrix4.identity()
+      ..translate(cx, cy)
+      ..rotateZ(math.pi / 14);
+    
+    return p.transform(m.storage);
+  }
+
+  @override
+  Path getClip(Size size) => getWindowPath(index, size);
+
+  @override
+  bool shouldReclip(SlantedFilmStrip4Clipper oldClipper) => index != oldClipper.index;
+}
+
+class SlantedFilmStrip4Painter extends CustomPainter {
+  final Color color;
+  final double width;
+  SlantedFilmStrip4Painter({required this.color, required this.width});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    double w = size.width;
+    double h = size.height;
+    double cx = w / 2;
+    double cy = h / 2;
+    
+    double ws = w * 0.62;
+    double ww = ws * 0.82;
+    double hw = ww * 0.85;
+    double gapY = ws * 0.1;
+
+    Path strip = Path()..addRect(Rect.fromCenter(center: Offset.zero, width: ws, height: h * 2.5));
+    
+    // Punch out the 3 windows
+    Path windows = Path();
+    windows.addRect(Rect.fromCenter(center: Offset(0, -(hw + gapY)), width: ww, height: hw));
+    windows.addRect(Rect.fromCenter(center: Offset.zero, width: ww, height: hw));
+    windows.addRect(Rect.fromCenter(center: Offset(0, (hw + gapY)), width: ww, height: hw));
+
+    strip = Path.combine(PathOperation.difference, strip, windows);
+
+    // Punch out the perforations
+    double ps = ws * 0.055;
+    double padding = ws * 0.035;
+    double pSpace = ps * 2.0;
+    
+    Path perfs = Path();
+    double leftX = -ws/2 + padding + ps/2;
+    double rightX = ws/2 - padding - ps/2;
+    
+    for (double y = -h * 1.5; y < h * 1.5; y += pSpace) {
+      perfs.addRect(Rect.fromCenter(center: Offset(leftX, y), width: ps, height: ps));
+      perfs.addRect(Rect.fromCenter(center: Offset(rightX, y), width: ps, height: ps));
+    }
+
+    strip = Path.combine(PathOperation.difference, strip, perfs);
+
+    // Apply transformation
+    Matrix4 m = Matrix4.identity()
+      ..translate(cx, cy)
+      ..rotateZ(math.pi / 14);
+      
+    strip = strip.transform(m.storage);
+
+    // Draw Drop Shadow
+    canvas.drawShadow(strip, Colors.black, 15.0, true);
+
+    // Draw strip body using the user's selected line color
+    // Usually white looks best, but mapping to line color adds customization.
+    // If line color is too dark, user can easily change it from Border tool.
+    canvas.drawPath(strip, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(SlantedFilmStrip4Painter old) => 
+    old.color != color || old.width != width;
+}
+
+class DiamondGrid4Painter extends CustomPainter {
+  final Color color;
+  final double width;
+  DiamondGrid4Painter({required this.color, required this.width});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (width < 0.5) return;
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = width
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    for (int i = 0; i < 4; i++) {
+        canvas.drawPath(DiamondGrid4Clipper.getPath(i, size), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(DiamondGrid4Painter old) =>
+      old.color != color || old.width != width;
+}
+
+class AsymmetricArch4Clipper extends CustomClipper<Path> {
+  final int index;
+  AsymmetricArch4Clipper({required this.index});
+
+  static Path getPath(int index, Size size) {
+    double w = size.width;
+    double h = size.height;
+    double cx = w * 0.35;
+    double cy = h * 0.65;
+    double g = w * 0.02; // gap
+    double r = w * 0.15; // corner radius
+
+    if (index == 0) {
+      return Path()..addRRect(RRect.fromRectAndCorners(
+        Rect.fromLTRB(0, 0, cx - g/2, cy - g/2),
+        topLeft: Radius.circular(r),
+        topRight: Radius.circular(r),
+      ));
+    } else if (index == 1) {
+      double cellW = cx - g/2;
+      double cellH = h - cy - g/2;
+      double rad = math.min(cellW, cellH) / 2;
+      return Path()..addOval(Rect.fromCircle(
+        center: Offset(cellW / 2, cy + g/2 + cellH / 2),
+        radius: rad,
+      ));
+    } else if (index == 2) {
+      return Path()..addRRect(RRect.fromRectAndCorners(
+        Rect.fromLTRB(cx + g/2, 0, w, cy - g/2),
+        topLeft: Radius.circular(r),
+        topRight: Radius.circular(r),
+      ));
+    } else {
+      return Path()..addRRect(RRect.fromRectAndCorners(
+        Rect.fromLTRB(cx + g/2, cy + g/2, w, h),
+        bottomLeft: Radius.circular(r),
+        bottomRight: Radius.circular(r),
+      ));
+    }
+  }
+
+  @override
+  Path getClip(Size size) => getPath(index, size);
+
+  @override
+  bool shouldReclip(AsymmetricArch4Clipper oldClipper) => index != oldClipper.index;
+}
+
+class AsymmetricArch4Painter extends CustomPainter {
+  final Color color;
+  final double width;
+  AsymmetricArch4Painter({required this.color, required this.width});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (width < 0.5) return;
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = width
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    for (int i = 0; i < 4; i++) {
+        canvas.drawPath(AsymmetricArch4Clipper.getPath(i, size), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(AsymmetricArch4Painter old) =>
+      old.color != color || old.width != width;
 }
 
 
