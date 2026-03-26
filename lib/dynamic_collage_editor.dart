@@ -1526,7 +1526,76 @@ class GlassSplitLinePainter extends CustomPainter {
         break;
       case 'film_strip':
         for (int i = 0; i < imageCount; i++) {
-          path.addPath(FilmStripClipper.getFilmStripPath(i, size), Offset.zero);
+          final double w = size.width;
+          final double h = size.height;
+          double frameW = w * 0.88;
+          double frameH = h * 0.28;
+          double cx = w * 0.5;
+          double cy;
+          double angle;
+
+          if (i == 0) {
+            cy = h * 0.18;
+            angle = 0.06;
+          } else if (i == 1) {
+            cy = h * 0.5;
+            angle = -0.06;
+          } else {
+            cy = h * 0.82;
+            angle = 0.06;
+          }
+
+          // Frame geometry
+          final matrix = Matrix4.identity()
+            ..translate(cx, cy)
+            ..rotateZ(angle);
+
+          // Draw Black Frame
+          Rect frameRect =
+              Rect.fromCenter(center: Offset.zero, width: frameW, height: frameH);
+          Path framePath = Path()..addRect(frameRect);
+          Path transformedFrame = framePath.transform(matrix.storage);
+          canvas.drawPath(transformedFrame, Paint()..color = Colors.black);
+
+          // Draw White Perforations (Holes)
+          double perfW = frameW * 0.04;
+          double perfH = frameH * 0.06;
+          double perfSpacing = frameH * 0.12;
+          double perfPaddingH = frameW * 0.05;
+
+          Paint perfPaint = Paint()..color = Colors.white;
+
+          // Left side perfs
+          for (double py = -frameH * 0.42; py < frameH * 0.45; py += perfSpacing) {
+            Rect perfRect = Rect.fromCenter(
+                center: Offset(-frameW * 0.5 + perfPaddingH, py),
+                width: perfW,
+                height: perfH);
+            Path p = Path()..addRRect(RRect.fromRectAndRadius(perfRect, const Radius.circular(1)));
+            canvas.drawPath(p.transform(matrix.storage), perfPaint);
+          }
+          // Right side perfs
+          for (double py = -frameH * 0.42; py < frameH * 0.45; py += perfSpacing) {
+            Rect perfRect = Rect.fromCenter(
+                center: Offset(frameW * 0.5 - perfPaddingH, py),
+                width: perfW,
+                height: perfH);
+            Path p = Path()..addRRect(RRect.fromRectAndRadius(perfRect, const Radius.circular(1)));
+            canvas.drawPath(p.transform(matrix.storage), perfPaint);
+          }
+
+          // Draw image border (white thin line)
+          double imgW = frameW * 0.8;
+          double imgH = frameH * 0.9;
+          Rect imgRect =
+              Rect.fromCenter(center: Offset.zero, width: imgW, height: imgH);
+          Path imgPath = Path()..addRect(imgRect);
+          canvas.drawPath(
+              imgPath.transform(matrix.storage),
+              Paint()
+                ..color = Colors.white.withOpacity(0.3)
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 1.0);
         }
         break;
       case 'torn_paper':

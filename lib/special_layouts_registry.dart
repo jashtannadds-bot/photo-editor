@@ -1745,37 +1745,41 @@ class FilmStripClipper extends CustomClipper<Path> {
     final double w = size.width;
     final double h = size.height;
 
-    Rect rect;
+    // Use a vertical arrangement of 3 tilted frames
+    // Frame 0: Top, tilted right
+    // Frame 1: Mid, tilted left
+    // Frame 2: Bot, tilted right
+
+    double frameW = w * 0.88;
+    double frameH = h * 0.28;
+    double cx = w * 0.5;
+    double cy;
+    double angle;
+
     if (index == 0) {
-      rect = Rect.fromLTRB(w * 0.05, h * 0.08, w * 0.6, h * 0.45);
+      cy = h * 0.18;
+      angle = 0.06; // ~3.5 degrees
     } else if (index == 1) {
-      rect = Rect.fromLTRB(w * 0.4, h * 0.28, w * 0.95, h * 0.65);
+      cy = h * 0.5;
+      angle = -0.06;
     } else {
-      rect = Rect.fromLTRB(w * 0.05, h * 0.52, w * 0.6, h * 0.9);
+      cy = h * 0.82;
+      angle = 0.06;
     }
 
-    Path path = Path()..addRect(rect);
+    // This is the IMAGE area path (inner part of the frame)
+    double imgW = frameW * 0.8;
+    double imgH = frameH * 0.9;
+    
+    Rect imgRect = Rect.fromCenter(center: Offset.zero, width: imgW, height: imgH);
+    Path path = Path()..addRect(imgRect);
 
-    // Perforations
-    double perfW = rect.width * 0.045;
-    double perfH = rect.height * 0.07;
-    double spacing = rect.width * 0.09;
-
-    Path perfs = Path();
-    for (double x = rect.left + spacing / 2.5; x < (rect.right - perfW); x += spacing) {
-      // Top perfs
-      perfs.addRRect(RRect.fromRectAndRadius(
-        Rect.fromLTWH(x, rect.top + rect.height * 0.06, perfW, perfH),
-        const Radius.circular(2),
-      ));
-      // Bottom perfs
-      perfs.addRRect(RRect.fromRectAndRadius(
-        Rect.fromLTWH(x, rect.bottom - rect.height * 0.06 - perfH, perfW, perfH),
-        const Radius.circular(2),
-      ));
-    }
-
-    return Path.combine(PathOperation.difference, path, perfs);
+    // Rotate and translate to position
+    final matrix = Matrix4.identity()
+      ..translate(cx, cy)
+      ..rotateZ(angle);
+    
+    return path.transform(matrix.storage);
   }
 
   @override
@@ -1784,7 +1788,7 @@ class FilmStripClipper extends CustomClipper<Path> {
   }
 
   @override
-  bool shouldReclip(FilmStripClipper old) => old.index != index;
+  bool shouldReclip(FilmStripClipper old) => index != old.index;
 }
 
 class TornPaperClipper extends CustomClipper<Path> {
