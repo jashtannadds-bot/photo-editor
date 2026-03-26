@@ -9,6 +9,7 @@ import 'package:photho_editor/special_layouts_registry.dart';
 import 'dart:math' as math;
 import 'package:photho_editor/collage_layout_data.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 
 class DynamicCollageEditor extends StatefulWidget {
@@ -544,6 +545,36 @@ class _DynamicCollageEditorState extends State<DynamicCollageEditor>
         break;
       case 'comic_burst_5':
         clipper = ComicBurst5Clipper(index: index);
+        break;
+      case 'month_january':
+      case 'month_february':
+      case 'month_march':
+      case 'month_april':
+      case 'month_may':
+      case 'month_june':
+      case 'month_july':
+      case 'month_august':
+      case 'month_september':
+      case 'month_october':
+      case 'month_november':
+      case 'month_december':
+        clipper = MonthClipper(index: index);
+        break;
+      case 'year_dynamic':
+      case 'date_dynamic':
+        clipper = DynamicTextClipper(index: index);
+        break;
+      case 'pinwheel_4':
+        clipper = PinwheelClipper(index: index);
+        break;
+      case 'asymmetric_arch_4':
+        clipper = AsymmetricArch4Clipper(index: index);
+        break;
+      case 'diamond_grid_4':
+        clipper = DiamondGrid4Clipper(index: index);
+        break;
+      case 'slanted_film_4':
+        clipper = SlantedFilmStrip4Clipper(index: index);
         break;
     }
 
@@ -1566,6 +1597,12 @@ class GlassSplitLinePainter extends CustomPainter {
       case 'christmas_star':
         ChristmasStarPainter(color: lineColor, width: lineWidth).paint(canvas, size);
         break;
+      case 'pinwheel_4':
+        PinwheelPainter(color: lineColor, width: lineWidth).paint(canvas, size);
+        break;
+      case 'slanted_film_4':
+        SlantedFilmStrip4Painter(color: lineColor, width: lineWidth).paint(canvas, size);
+        break;
       case 'puzzle_trio':
         PuzzleTrioPainter(color: lineColor, width: lineWidth).paint(canvas, size);
         break;
@@ -1575,6 +1612,13 @@ class GlassSplitLinePainter extends CustomPainter {
       case 'love_story':
         LoveStoryPainter(color: lineColor, width: lineWidth).paint(canvas, size);
         break;
+      case 'asymmetric_arch_4':
+        AsymmetricArch4Painter(color: lineColor, width: lineWidth).paint(canvas, size);
+        break;
+      case 'diamond_grid_4':
+        DiamondGrid4Painter(color: lineColor, width: lineWidth).paint(canvas, size);
+        break;
+
       case 'hearts_flower':
       case 'hearts_balloon':
       case 'random_hearts':
@@ -1595,12 +1639,120 @@ class GlassSplitLinePainter extends CustomPainter {
         }
         break;
       case 'comic_burst_5':
-        // Draw quadrants first
-        for (int i = 1; i < 5; i++) {
-          canvas.drawPath(ComicBurst5Clipper.getComicBurst5Path(i, size), paint);
+        // Professional Comic Red with bold thickness
+        final comicBorderPaint = Paint()
+          ..color = lineColor // Restored dynamic color support
+          ..strokeWidth = lineWidth * 2.0
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round;
+        comicBorderPaint.style = PaintingStyle.stroke;
+
+        // Draw individual borders for all 5 shapes (4 quadrants + 1 burst)
+        // This ensures every edge has a border and they stack correctly at seams.
+        for (int i = 0; i < 5; i++) {
+          canvas.drawPath(
+              ComicBurst5Clipper.getComicBurst5Path(i, size), comicBorderPaint);
         }
-        // Draw burst last to ensure its jagged border is clean on top
-        canvas.drawPath(ComicBurst5Clipper.getComicBurst5Path(0, size), paint);
+        break;
+      case 'month_january':
+      case 'month_february':
+      case 'month_march':
+      case 'month_april':
+      case 'month_may':
+      case 'month_june':
+      case 'month_july':
+      case 'month_august':
+      case 'month_september':
+      case 'month_october':
+      case 'month_november':
+      case 'month_december':
+        final monthsMap = {
+          'january': 'January', 'february': 'February', 'march': 'March',
+          'april': 'April', 'may': 'May', 'june': 'June',
+          'july': 'July', 'august': 'August', 'september': 'September',
+          'october': 'October', 'november': 'November', 'december': 'December',
+        };
+        final rawKey = clipType.split('_').last.toLowerCase().trim();
+        final monthName = monthsMap[rawKey] ?? (rawKey.isNotEmpty ? rawKey[0].toUpperCase() + rawKey.substring(1) : '');
+        final centerLineY = h / 2;
+        
+        // 1. Draw a clean white split line
+        final splitPaint = Paint()
+          ..color = Colors.white
+          ..strokeWidth = (lineWidth * 0.5).clamp(2.0, 4.0)
+          ..strokeCap = StrokeCap.round;
+        canvas.drawLine(Offset(0, centerLineY), Offset(w, centerLineY), splitPaint);
+
+        // 2. Render the Month Name in the beautiful script font (as preferred)
+        final textPainter = TextPainter(
+          text: TextSpan(
+            text: monthName,
+            style: GoogleFonts.greatVibes(
+              color: Colors.white,
+              fontSize: w * 0.22,
+              shadows: [
+                Shadow(
+                  blurRadius: 10,
+                  color: Colors.black.withOpacity(0.5),
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+          ),
+          textDirection: ui.TextDirection.ltr,
+        );
+        textPainter.layout();
+        
+        // Vertical offset adjustment: 'J' in GreatVibes has a large descender
+        // We nudge it slightly to look more balanced like the other months.
+        double verticalNudge = monthName.startsWith('J') ? -textPainter.height * 0.05 : 0;
+
+        // Center the text vertically and horizontally over the split
+        textPainter.paint(
+          canvas, 
+          Offset((w - textPainter.width) / 2, centerLineY - textPainter.height / 2.2 + verticalNudge)
+        );
+        break;
+
+      case 'year_dynamic':
+      case 'date_dynamic':
+        final now = DateTime.now();
+        final dynamicText = clipType == 'year_dynamic'
+            ? now.year.toString()
+            : now.day.toString().padLeft(2, '0');
+
+        // 1. Draw the curved diagonal split line (matching reference image)
+        final dynSplitPaint = Paint()
+          ..color = lineColor
+          ..strokeWidth = lineWidth.clamp(3.0, 6.0)
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round;
+        canvas.drawPath(DynamicTextClipper.getDynamicTextSplitPath(size), dynSplitPaint);
+
+        // 2. Render the year/date number in large Great Vibes script
+        final dynTextPainter = TextPainter(
+          text: TextSpan(
+            text: dynamicText,
+            style: GoogleFonts.greatVibes(
+              color: lineColor,
+              fontSize: w * 0.38,
+              height: 1.0,
+              shadows: [
+                Shadow(
+                  blurRadius: 15,
+                  color: Colors.black.withOpacity(0.45),
+                  offset: const Offset(4, 4),
+                ),
+              ],
+            ),
+          ),
+          textDirection: ui.TextDirection.ltr,
+        );
+        dynTextPainter.layout();
+        dynTextPainter.paint(
+          canvas,
+          Offset((w - dynTextPainter.width) / 2, (h - dynTextPainter.height) / 2.3),
+        );
         break;
     }
 
