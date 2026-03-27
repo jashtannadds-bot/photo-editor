@@ -418,6 +418,27 @@ final List<CollageLayoutDef> layouts3 = [
     imageCount: 3,
   ),
   const CollageLayoutDef(
+    name: 'Zigzag Bands',
+    icon: Icons.show_chart_rounded,
+    isClipBased: true,
+    clipType: 'zigzag_band',
+    imageCount: 3,
+  ),
+  const CollageLayoutDef(
+    name: 'Spiky Zigzag',
+    icon: Icons.show_chart_rounded,
+    isClipBased: true,
+    clipType: 'spiky_zigzag',
+    imageCount: 3,
+  ),
+  const CollageLayoutDef(
+    name: 'Diagonal Heart',
+    icon: Icons.favorite_border_rounded,
+    isClipBased: true,
+    clipType: 'diagonal_heart',
+    imageCount: 3,
+  ),
+  const CollageLayoutDef(
     name: 'Film Strip',
     icon: Icons.movie_rounded,
     isClipBased: true,
@@ -858,6 +879,13 @@ final List<CollageLayoutDef> layouts3 = [
 
 final List<CollageLayoutDef> layouts4 = [
   const CollageLayoutDef(
+    name: 'Year 2x2 (Dynamic)',
+    icon: Icons.calendar_today_rounded,
+    isClipBased: true,
+    clipType: 'year_grid_4',
+    imageCount: 4,
+  ),
+  const CollageLayoutDef(
     name: 'Asymmetric Arch',
     icon: Icons.dashboard_customize_rounded,
     isClipBased: true,
@@ -904,6 +932,13 @@ final List<CollageLayoutDef> layouts4 = [
     icon: Icons.hexagon_outlined,
     isClipBased: true,
     clipType: 'hexagon_split',
+    imageCount: 4,
+  ),
+  const CollageLayoutDef(
+    name: 'Shape Grid',
+    icon: Icons.auto_awesome_rounded,
+    isClipBased: true,
+    clipType: 'shape_grid_4',
     imageCount: 4,
   ),
   // 1. Classic 2x2
@@ -1576,14 +1611,16 @@ final List<CollageLayoutDef> layouts5 = [
   const CollageLayoutDef(
     name: 'Staircase',
     icon: Icons.stairs_rounded,
+    isClipBased: true,
+    clipType: 'staircase_5',
     imageCount: 5,
-    cells: [
-      CellRect(0.0, 0.0, 0.2, 0.2),
-      CellRect(0.2, 0.2, 0.2, 0.2),
-      CellRect(0.4, 0.4, 0.2, 0.2),
-      CellRect(0.6, 0.6, 0.2, 0.2),
-      CellRect(0.8, 0.8, 0.2, 0.2),
-    ],
+  ),
+  const CollageLayoutDef(
+    name: 'DAD Heart',
+    icon: Icons.favorite_rounded,
+    isClipBased: true,
+    clipType: 'dad_heart',
+    imageCount: 5,
   ),
   const CollageLayoutDef(
     name: 'Vertical Strips',
@@ -1686,6 +1723,13 @@ final List<CollageLayoutDef> layouts5 = [
     icon: Icons.track_changes_rounded,
     isClipBased: true,
     clipType: 'radial_5',
+    imageCount: 5,
+  ),
+  const CollageLayoutDef(
+    name: 'Star Burst',
+    icon: Icons.star_border_rounded,
+    isClipBased: true,
+    clipType: 'star_burst_5',
     imageCount: 5,
   ),
 ];

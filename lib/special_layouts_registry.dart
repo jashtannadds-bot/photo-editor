@@ -492,6 +492,43 @@ class Heart3SplitClipper extends CustomClipper<Path> {
   bool shouldReclip(Heart3SplitClipper oldClipper) => index != oldClipper.index;
 }
 
+class DiagonalHeartClipper extends CustomClipper<Path> {
+  final int index;
+  DiagonalHeartClipper({required this.index});
+
+  @override
+  Path getClip(Size size) {
+    final w = size.width;
+    final h = size.height;
+    
+    // Consistent heart shape parameters
+    Path heartPath = PerfectHeartClipper().getClip(size);
+
+    if (index == 2) {
+      return heartPath;
+    }
+
+    Path triangle = Path();
+    if (index == 0) {
+      // Top-left triangle (split top-right to bottom-left)
+      triangle.moveTo(0, 0);
+      triangle.lineTo(w, 0);
+      triangle.lineTo(0, h);
+    } else {
+      // Bottom-right triangle
+      triangle.moveTo(w, h);
+      triangle.lineTo(w, 0);
+      triangle.lineTo(0, h);
+    }
+    triangle.close();
+
+    return Path.combine(PathOperation.difference, triangle, heartPath);
+  }
+
+  @override
+  bool shouldReclip(DiagonalHeartClipper old) => index != old.index;
+}
+
 class LotusSplitClipper extends CustomClipper<Path> {
   final int index;
   LotusSplitClipper({required this.index});
@@ -1673,14 +1710,14 @@ class ILoveUClipper extends CustomClipper<Path> {
 
     final double ch = h * 0.75;
 
+    final double charW = w * 0.23; // Uniform width for I and U
     if (index == 0) {
       // Shape "I" (Capsule)
-      double uw = w * 0.2;
       return Path()
         ..addRRect(RRect.fromRectAndRadius(
           Rect.fromCenter(
-              center: Offset(w * 0.16, cy), width: uw, height: ch),
-          Radius.circular(uw * 0.5),
+              center: Offset(w * 0.16, cy), width: charW, height: ch),
+          Radius.circular(charW * 0.5),
         ));
     } else if (index == 1) {
       // Shape "Heart" (❤️)
@@ -1700,29 +1737,19 @@ class ILoveUClipper extends CustomClipper<Path> {
       path.close();
       return path;
     } else {
-      // Shape "U"
+      // Shape "U" (Solid Cup, no cutout)
       final path = Path();
-      double uw = w * 0.26;
       double ux = w * 0.84;
       double uy = cy;
       double uh = ch;
-      double ur = uw * 0.5;
+      double ur = charW * 0.5;
 
-      // Outer U
-      path.moveTo(ux - uw / 2, uy - uh / 2);
-      path.lineTo(ux - uw / 2, uy + uh / 2 - ur);
-      path.arcToPoint(Offset(ux + uw / 2, uy + uh / 2 - ur),
+      // Solid U shape
+      path.moveTo(ux - charW / 2, uy - uh / 2);
+      path.lineTo(ux - charW / 2, uy + uh / 2 - ur);
+      path.arcToPoint(Offset(ux + charW / 2, uy + uh / 2 - ur),
           radius: Radius.circular(ur), clockwise: false);
-      path.lineTo(ux + uw / 2, uy - uh / 2);
-
-      // Inner U (hole) - narrowed gap, thicker columns
-      double holeW = uw * 0.35;
-      path.lineTo(ux + holeW / 2, uy - uh / 2);
-      path.lineTo(ux + holeW / 2, uy + uh / 2 - ur);
-      path.arcToPoint(Offset(ux - holeW / 2, uy + uh / 2 - ur),
-          radius: Radius.circular(ur * 0.2), clockwise: true);
-      path.lineTo(ux - holeW / 2, uy - uh / 2);
-
+      path.lineTo(ux + charW / 2, uy - uh / 2);
       path.close();
       return path;
     }
@@ -1916,6 +1943,656 @@ class TornDiagonalClipper extends CustomClipper<Path> {
 
   @override
   bool shouldReclip(TornDiagonalClipper old) => old.index != index;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ZIGZAG BAND CLIPPER — 3 horizontal bands with wide chevron/zigzag seams
+// Matches the reference collage: top image / middle / bottom split by spiky
+// full-width zigzag dividers.
+// ─────────────────────────────────────────────────────────────────────────────
+class ZigzagBandClipper extends CustomClipper<Path> {
+  final int index;
+
+  /// Number of zigzag teeth across the full width.
+  static const int _teeth = 8;
+
+  ZigzagBandClipper({required this.index});
+
+  /// Build a zigzag line y-profile across [0, w] centred at [midY].
+  /// Each tooth spans [toothW] wide and peaks/troughs [amp] above/below midY.
+  /// [upFirst] decides whether the first tooth points up or down.
+  static List<Offset> _zigzagLine(
+      double w, double midY, double amp, bool upFirst) {
+    final pts = <Offset>[];
+    final toothW = w / _teeth;
+    for (int i = 0; i <= _teeth; i++) {
+      final x = i * toothW;
+      // Alternate peak and trough
+      final y = midY + ((i % 2 == 0) == upFirst ? -amp : amp);
+      pts.add(Offset(x, y));
+    }
+    return pts;
+  }
+
+  static Path getZigzagBandPath(int index, Size size) {
+    final w = size.width;
+    final h = size.height;
+
+    // Two seam positions (as fraction of height)
+    const double seam1Frac = 0.35;
+    const double seam2Frac = 0.67;
+
+    final double seam1 = h * seam1Frac;
+    final double seam2 = h * seam2Frac;
+    final double amp = h * 0.045; // tooth amplitude
+
+    // Top seam line: peaks point downward (into the top band) for a classic
+    // "torn" look where the gap opens between band 0 and band 1.
+    final List<Offset> topSeam =
+        _zigzagLine(w, seam1, amp, false); // first point goes DOWN
+
+    // Bottom seam line: peaks point upward (into the middle band).
+    final List<Offset> bottomSeam =
+        _zigzagLine(w, seam2, amp, true); // first point goes UP
+
+    final path = Path();
+
+    if (index == 0) {
+      // TOP BAND: from top edge down to topSeam
+      path.moveTo(0, 0);
+      path.lineTo(w, 0);
+      // Walk topSeam right-to-left so the closing is natural
+      for (int i = topSeam.length - 1; i >= 0; i--) {
+        path.lineTo(topSeam[i].dx, topSeam[i].dy);
+      }
+      path.close();
+    } else if (index == 1) {
+      // MIDDLE BAND: from topSeam down to bottomSeam
+      // Start at the left end of upper seam
+      path.moveTo(topSeam.first.dx, topSeam.first.dy);
+      for (final p in topSeam) {
+        path.lineTo(p.dx, p.dy);
+      }
+      // Go to bottom seam right side then walk back left
+      for (int i = bottomSeam.length - 1; i >= 0; i--) {
+        path.lineTo(bottomSeam[i].dx, bottomSeam[i].dy);
+      }
+      path.close();
+    } else {
+      // BOTTOM BAND: from bottomSeam to bottom edge
+      path.moveTo(bottomSeam.first.dx, bottomSeam.first.dy);
+      for (final p in bottomSeam) {
+        path.lineTo(p.dx, p.dy);
+      }
+      path.lineTo(w, h);
+      path.lineTo(0, h);
+      path.close();
+    }
+
+    return path;
+  }
+
+  @override
+  Path getClip(Size size) => getZigzagBandPath(index, size);
+
+  @override
+  bool shouldReclip(ZigzagBandClipper old) => old.index != index;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SPIKY ZIGZAG CLIPPER — More aggressive zigzag for 3 horizontal bands
+// ─────────────────────────────────────────────────────────────────────────────
+class SpikyZigzagClipper extends CustomClipper<Path> {
+  final int index;
+  static const int _teeth = 12;
+
+  SpikyZigzagClipper({required this.index});
+
+  static List<Offset> _spikyZigzagLine(double w, double midY, double amp, bool upFirst) {
+    final pts = <Offset>[];
+    final toothW = w / _teeth;
+    for (int i = 0; i <= _teeth; i++) {
+      final x = i * toothW;
+      final y = midY + ((i % 2 == 0) == upFirst ? -amp : amp);
+      pts.add(Offset(x, y));
+    }
+    return pts;
+  }
+
+  static Path getSpikyZigzagBandPath(int index, Size size) {
+    final w = size.width;
+    final h = size.height;
+    const double seam1Frac = 0.33;
+    const double seam2Frac = 0.66;
+    final double seam1 = h * seam1Frac;
+    final double seam2 = h * seam2Frac;
+    final double amp = h * 0.06;
+
+    final List<Offset> topSeam = _spikyZigzagLine(w, seam1, amp, false);
+    final List<Offset> bottomSeam = _spikyZigzagLine(w, seam2, amp, true);
+
+    final path = Path();
+    if (index == 0) {
+      path.moveTo(0, 0);
+      path.lineTo(w, 0);
+      for (int i = topSeam.length - 1; i >= 0; i--) path.lineTo(topSeam[i].dx, topSeam[i].dy);
+      path.close();
+    } else if (index == 1) {
+      path.moveTo(topSeam.first.dx, topSeam.first.dy);
+      for (final p in topSeam) path.lineTo(p.dx, p.dy);
+      for (int i = bottomSeam.length - 1; i >= 0; i--) path.lineTo(bottomSeam[i].dx, bottomSeam[i].dy);
+      path.close();
+    } else {
+      path.moveTo(bottomSeam.first.dx, bottomSeam.first.dy);
+      for (final p in bottomSeam) path.lineTo(p.dx, p.dy);
+      path.lineTo(w, h);
+      path.lineTo(0, h);
+      path.close();
+    }
+    return path;
+  }
+
+  @override
+  Path getClip(Size size) => getSpikyZigzagBandPath(index, size);
+
+  @override
+  bool shouldReclip(SpikyZigzagClipper old) => old.index != index;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ARTISTIC SHAPE GRID CLIPPER — 4 unique shapes in a 2x2 grid
+// ─────────────────────────────────────────────────────────────────────────────
+class ArtisticShapeGridClipper extends CustomClipper<Path> {
+  final int index;
+  ArtisticShapeGridClipper({required this.index});
+
+  static Path getShapePath(int index, Size size) {
+    final double w = size.width;
+    final double h = size.height;
+    final double cx = w * (index % 2 == 0 ? 0.25 : 0.75);
+    final double cy = h * (index < 2 ? 0.25 : 0.75);
+    final double r = math.min(w, h) * 0.23;
+
+    switch (index) {
+      case 0: // Top-Left: 4-pointed shuriken/butterfly
+        return _getGeneralizedPetalPath(cx, cy, r, segments: 4, pointed: true, innerRadiusFrac: 0.35);
+      case 1: // Top-Right: 8-pointed star flower
+        return _getGeneralizedPetalPath(cx, cy, r, segments: 8, pointed: true, innerRadiusFrac: 0.5);
+      case 2: // Bottom-Left: 6-rounded-petal flower
+        return _getGeneralizedPetalPath(cx, cy, r, segments: 6, pointed: false, innerRadiusFrac: 0.4);
+      case 3: // Bottom-Right: 4-rounded-petal clover
+        return _getGeneralizedPetalPath(cx, cy, r, segments: 4, pointed: false, innerRadiusFrac: 0.4);
+      default:
+        return Path()..addRect(Rect.fromLTWH(0, 0, w, h));
+    }
+  }
+
+  static Path _getGeneralizedPetalPath(double cx, double cy, double r, 
+      {required int segments, required bool pointed, required double innerRadiusFrac}) {
+    final path = Path();
+    final double innerR = r * innerRadiusFrac;
+    final double angleStep = (2 * math.pi) / segments;
+
+    for (int i = 0; i < segments; i++) {
+      double angle = i * angleStep - math.pi / 2;
+      double nextAngle = (i + 1) * angleStep - math.pi / 2;
+      double midAngle = (angle + nextAngle) / 2;
+
+      double xTip = cx + math.cos(midAngle) * r;
+      double yTip = cy + math.sin(midAngle) * r;
+      
+      double x1 = cx + math.cos(angle) * innerR;
+      double y1 = cy + math.sin(angle) * innerR;
+      
+      double x2 = cx + math.cos(nextAngle) * innerR;
+      double y2 = cy + math.sin(nextAngle) * innerR;
+
+      if (i == 0) path.moveTo(x1, y1);
+
+      if (pointed) {
+        // Pointed tips - sharper inward curvature
+        double ctrlDist = r * 0.6;
+        double cx1 = cx + math.cos(angle + angleStep * 0.25) * ctrlDist;
+        double cy1 = cy + math.sin(angle + angleStep * 0.25) * ctrlDist;
+        double cx2 = cx + math.cos(midAngle - angleStep * 0.25) * ctrlDist;
+        double cy2 = cy + math.sin(midAngle - angleStep * 0.25) * ctrlDist;
+        
+        path.cubicTo(cx1, cy1, cx2, cy2, xTip, yTip);
+        
+        double cx3 = cx + math.cos(midAngle + angleStep * 0.25) * ctrlDist;
+        double cy3 = cy + math.sin(midAngle + angleStep * 0.25) * ctrlDist;
+        double cx4 = cx + math.cos(nextAngle - angleStep * 0.25) * ctrlDist;
+        double cy4 = cy + math.sin(nextAngle - angleStep * 0.25) * ctrlDist;
+        
+        path.cubicTo(cx3, cy3, cx4, cy4, x2, y2);
+      } else {
+        // Rounded tips - smoother petals
+        double ctrlDist = r * 1.25; // Bulky petals
+        double cx1 = cx + math.cos(angle + angleStep * 0.3) * ctrlDist;
+        double cy1 = cy + math.sin(angle + angleStep * 0.3) * ctrlDist;
+        double cx2 = cx + math.cos(nextAngle - angleStep * 0.3) * ctrlDist;
+        double cy2 = cy + math.sin(nextAngle - angleStep * 0.3) * ctrlDist;
+        
+        path.cubicTo(cx1, cy1, cx2, cy2, x2, y2);
+      }
+    }
+    path.close();
+    return path;
+  }
+
+  @override
+  Path getClip(Size size) => getShapePath(index, size);
+
+  @override
+  bool shouldReclip(ArtisticShapeGridClipper old) => old.index != index;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DAD HEART CLIPPER — 5 images: Rect, Heart, D, A, D
+// ─────────────────────────────────────────────────────────────────────────────
+class DadHeartClipper extends CustomClipper<Path> {
+  final int index;
+  DadHeartClipper({required this.index});
+
+  static Path getDadHeartPath(int index, Size size) {
+    final double w = size.width;
+    final double h = size.height;
+
+    final double charW = w * 0.24;
+    final double charH = h * 0.24;
+    final double charY = h * 0.72;
+
+    switch (index) {
+      case 0: // Top Left: Vertical Rectangle (Matching Letter Width)
+        return Path()..addRRect(RRect.fromRectAndRadius(
+          Rect.fromCenter(center: Offset(w * 0.22, h * 0.25), width: charW, height: h * 0.4),
+          Radius.circular(w * 0.02),
+        ));
+      case 1: // Top Right: Heart
+        return _getHeartPath(w * 0.7, h * 0.25, w * 0.45);
+      case 2: // Bottom Left: D
+        return _getLetterDPath(w * 0.18, charY, charW, charH);
+      case 3: // Bottom Mid: A
+        return _getLetterAPath(w * 0.5, charY, charW, charH);
+      case 4: // Bottom Right: D
+        return _getLetterDPath(w * 0.82, charY, charW, charH);
+      default:
+        return Path()..addRect(Rect.fromLTWH(0, 0, w, h));
+    }
+  }
+
+  static Path _getHeartPath(double cx, double cy, double s) {
+    final path = Path();
+    double hx = cx;
+    double hy = cy - s * 0.45;
+    path.moveTo(hx, hy + s * 0.2);
+    path.cubicTo(hx, hy - s * 0.15, hx + s * 0.5, hy - s * 0.15, hx + s * 0.5, hy + s * 0.3);
+    path.cubicTo(hx + s * 0.5, hy + s * 0.55, hx, hy + s * 0.75, hx, hy + s * 0.95);
+    path.cubicTo(hx, hy + s * 0.75, hx - s * 0.5, hy + s * 0.55, hx - s * 0.5, hy + s * 0.3);
+    path.cubicTo(hx - s * 0.5, hy - s * 0.15, hx, hy - s * 0.15, hx, hy + s * 0.2);
+    path.close();
+    return path;
+  }
+
+  static Path _getLetterDPath(double cx, double cy, double w, double h) {
+    final double x = cx - w / 2;
+    final double y = cy - h / 2;
+    final double r = h * 0.5;
+
+    final outer = Path();
+    outer.moveTo(x, y);
+    outer.lineTo(x, y + h);
+    outer.lineTo(x + w - r, y + h);
+    outer.arcToPoint(Offset(x + w - r, y), radius: Radius.circular(r), clockwise: false);
+    outer.lineTo(x, y);
+    outer.close();
+
+    return outer;
+  }
+
+  static Path _getLetterAPath(double cx, double cy, double w, double h) {
+    final double x = cx - w / 2;
+    final double y = cy - h / 2;
+
+    final outer = Path();
+    // Solid Block Trapezoid - remove the bottom cutout to maximize space
+    outer.moveTo(cx - w * 0.12, y); // Top Center
+    outer.lineTo(cx + w * 0.12, y); // Top Right
+    outer.lineTo(x + w, y + h); // Bottom Right
+    outer.lineTo(x, y + h); // Bottom Left
+    outer.close();
+    
+    // Crossbar: solid slab
+    final bar = Path()..addRect(Rect.fromLTWH(x + w * 0.1, y + h * 0.5, w * 0.8, h * 0.2));
+    final fullA = Path.combine(PathOperation.union, outer, bar);
+
+    return fullA;
+  }
+
+  @override
+  Path getClip(Size size) => getDadHeartPath(index, size);
+
+  @override
+  bool shouldReclip(DadHeartClipper old) => old.index != index;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// YEAR GRID CLIPPER — 4 images representing the current year (e.g., 2 0 2 6)
+// Arranged in a 2x2 grid. Bubbly/bold font style.
+// ─────────────────────────────────────────────────────────────────────────────
+class YearGridClipper extends CustomClipper<Path> {
+  final String year;
+  final int index;
+  YearGridClipper({required this.year, required this.index});
+
+  @override
+  Path getClip(Size size) {
+    if (year.length < 4 || index >= 4) return Path()..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
+    
+    final double w = size.width;
+    final double h = size.height;
+    
+    // Position in 2x2 grid
+    final double cx = w * (index % 2 == 0 ? 0.25 : 0.75);
+    final double cy = h * (index < 2 ? 0.25 : 0.75);
+    final double charW = w * 0.44;
+    final double charH = h * 0.44;
+    
+    final Rect charRect = Rect.fromCenter(center: Offset(cx, cy), width: charW, height: charH);
+    final String digit = year[index];
+    
+    return _getDigitPath(digit, charRect);
+  }
+
+  static Path _getDigitPath(String digit, Rect rect) {
+    switch (digit) {
+      case '0': return _getDigit0Path(rect);
+      case '1': return _getDigit1Path(rect);
+      case '2': return _getDigit2Path(rect);
+      case '3': return _getDigit3Path(rect);
+      case '4': return _getDigit4Path(rect);
+      case '5': return _getDigit5Path(rect);
+      case '6': return _getDigit6Path(rect);
+      case '7': return _getDigit7Path(rect);
+      case '8': return _getDigit8Path(rect);
+      case '9': return _getDigit9Path(rect);
+      default: return Path()..addRect(rect);
+    }
+  }
+
+  static Path _getDigit0Path(Rect r) {
+    // Large Oval body
+    Path path = Path()..addOval(r);
+    
+    // Two vertical "eyes" capsules
+    double eyeW = r.width * 0.16;
+    double eyeH = r.height * 0.3;
+    double eyeGap = r.width * 0.1;
+    
+    Path eye1 = Path()..addRRect(RRect.fromRectAndRadius(
+      Rect.fromCenter(center: Offset(r.center.dx - eyeGap, r.center.dy - r.height * 0.05), width: eyeW, height: eyeH),
+      Radius.circular(eyeW * 0.5),
+    ));
+    Path eye2 = Path()..addRRect(RRect.fromRectAndRadius(
+      Rect.fromCenter(center: Offset(r.center.dx + eyeGap, r.center.dy - r.height * 0.05), width: eyeW, height: eyeH),
+      Radius.circular(eyeW * 0.5),
+    ));
+    
+    Path holes = Path.combine(PathOperation.union, eye1, eye2);
+    return Path.combine(PathOperation.difference, path, holes);
+  }
+
+  static Path _getDigit1Path(Rect r) {
+    final double bw = r.width * 0.38;
+    // Tapered vertical bar with rounded top
+    final path = Path();
+    path.moveTo(r.center.dx - bw * 0.4, r.bottom);
+    path.lineTo(r.center.dx + bw * 0.4, r.bottom);
+    path.lineTo(r.center.dx + bw * 0.5, r.top + bw);
+    path.arcToPoint(Offset(r.center.dx - bw * 0.5, r.top + bw), radius: Radius.circular(bw * 0.5));
+    path.close();
+    return path;
+  }
+
+  static Path _getDigit2Path(Rect r) {
+    final double w = r.width;
+    final double h = r.height;
+    final double bw = w * 0.35;
+    
+    // 1. The bubbly head hook
+    final head = Path();
+    head.moveTo(r.left, r.top + h * 0.4);
+    head.cubicTo(r.left, r.top - h * 0.1, r.right, r.top - h * 0.1, r.right, r.top + h * 0.3);
+    head.lineTo(r.right, r.top + h * 0.45);
+    head.lineTo(r.right - bw, r.top + h * 0.45);
+    head.lineTo(r.right - bw, r.top + h * 0.3);
+    head.cubicTo(r.right - bw, r.top + bw * 0.2, r.left + bw, r.top + bw * 0.2, r.left + bw, r.top + h * 0.4);
+    head.close();
+    
+    // 2. The curved neck (connecting right of head to left of base)
+    final neck = Path();
+    neck.moveTo(r.right, r.top + h * 0.4);
+    neck.quadraticBezierTo(r.right, r.bottom - bw, r.left + bw * 1.2, r.bottom - bw);
+    neck.lineTo(r.left, r.bottom - bw);
+    neck.quadraticBezierTo(r.right - bw, r.bottom - bw, r.right - bw, r.top + h * 0.4);
+    neck.close();
+    
+    // 3. The flat horizontal base
+    final base = Path()..addRRect(RRect.fromRectAndRadius(
+      Rect.fromLTWH(r.left, r.bottom - bw, w, bw),
+      Radius.circular(bw * 0.3),
+    ));
+    
+    Path two = Path.combine(PathOperation.union, head, neck);
+    two = Path.combine(PathOperation.union, two, base);
+    
+    // 4. The internal "eye" comma (positioned in the head)
+    double cw = w * 0.12;
+    double ch = h * 0.2;
+    Path comma = Path()..addOval(Rect.fromLTWH(r.center.dx - cw * 0.5, r.top + h * 0.2, cw, ch));
+    
+    return Path.combine(PathOperation.difference, two, comma);
+  }
+
+  static Path _getDigit3Path(Rect r) {
+    final double w = r.width;
+    final double h = r.height;
+    
+    // Two very bubbly, almost circular loops
+    Path top = Path()..addOval(Rect.fromLTWH(r.left + w * 0.05, r.top, w * 0.9, h * 0.55));
+    Path bottom = Path()..addOval(Rect.fromLTWH(r.left, r.top + h * 0.4, w, h * 0.6));
+    Path union = Path.combine(PathOperation.union, top, bottom);
+    
+    // Characterful holes (not centered)
+    Path hole1 = Path()..addOval(Rect.fromCenter(center: Offset(r.center.dx + w * 0.05, r.top + h * 0.28), width: w * 0.3, height: h * 0.18));
+    Path hole2 = Path()..addOval(Rect.fromCenter(center: Offset(r.center.dx + w * 0.05, r.bottom - h * 0.3), width: w * 0.35, height: h * 0.22));
+    
+    Path combined = Path.combine(PathOperation.difference, union, hole1);
+    combined = Path.combine(PathOperation.difference, combined, hole2);
+    
+    // Cut out the left side with a curved notch
+    Path cut = Path();
+    cut.moveTo(r.left - 10, r.top);
+    cut.quadraticBezierTo(r.left + w * 0.4, r.center.dy, r.left - 10, r.bottom);
+    cut.lineTo(r.left - 10, r.top);
+    cut.close();
+    
+    return Path.combine(PathOperation.difference, combined, cut);
+  }
+
+  static Path _getDigit4Path(Rect r) {
+    final double w = r.width;
+    final double h = r.height;
+    final double bw = w * 0.35;
+    
+    // Vertical Bar (Thick and Tapered)
+    Path vBar = Path();
+    vBar.moveTo(r.right - bw * 1.2, r.top);
+    vBar.lineTo(r.right - bw * 0.2, r.top);
+    vBar.lineTo(r.right, r.bottom);
+    vBar.lineTo(r.right - bw, r.bottom);
+    vBar.close();
+    
+    // Horizontal Bar (Thick)
+    Path hBar = Path()..addRRect(RRect.fromRectAndRadius(
+      Rect.fromLTWH(r.left, r.top + h * 0.45, w, bw),
+      Radius.circular(bw * 0.2),
+    ));
+    
+    // Slanted part (Curved)
+    Path slant = Path();
+    slant.moveTo(r.left, r.top + h * 0.55);
+    slant.quadraticBezierTo(r.left, r.top, r.right - bw * 0.5, r.top);
+    slant.lineTo(r.right - bw, r.top + bw * 0.5);
+    slant.quadraticBezierTo(r.left + bw, r.top + bw, r.left + bw, r.top + h * 0.55);
+    slant.close();
+    
+    Path four = Path.combine(PathOperation.union, vBar, hBar);
+    four = Path.combine(PathOperation.union, four, slant);
+    return four;
+  }
+
+  static Path _getDigit5Path(Rect r) {
+    final double w = r.width;
+    final double h = r.height;
+    final double bw = w * 0.35;
+    
+    final path = Path();
+    // 1. Curved Top Bar
+    path.moveTo(r.left, r.top + bw * 0.5);
+    path.quadraticBezierTo(r.left, r.top, r.center.dx, r.top);
+    path.quadraticBezierTo(r.right, r.top, r.right, r.top + bw * 0.5);
+    path.lineTo(r.right, r.top + bw);
+    path.quadraticBezierTo(r.right, r.top + bw * 0.5, r.center.dx, r.top + bw * 0.5);
+    path.quadraticBezierTo(r.left + bw, r.top + bw * 0.5, r.left + bw, r.top + bw * 1.2);
+    path.close();
+    
+    // 2. Neck and Belly
+    final belly = Path();
+    belly.moveTo(r.left + bw, r.top + bw);
+    belly.lineTo(r.left + bw, r.top + h * 0.45);
+    belly.arcTo(Rect.fromLTWH(r.left, r.top + h * 0.3, w, h * 0.7), -1.2 * math.pi, 1.9 * math.pi, false);
+    belly.close();
+    
+    Path five = Path.combine(PathOperation.union, path, belly);
+    
+    // 3. Belly hole
+    Path hole = Path()..addOval(Rect.fromCenter(center: Offset(r.center.dx, r.bottom - h * 0.28), width: w * 0.3, height: h * 0.25));
+    
+    return Path.combine(PathOperation.difference, five, hole);
+  }
+
+  static Path _getDigit6Path(Rect r) {
+    final double w = r.width;
+    final double h = r.height;
+    final double bw = w * 0.35;
+    
+    final path = Path();
+    // Belly circle
+    path.addOval(Rect.fromLTWH(r.left, r.top + h * 0.35, w, h * 0.65));
+    
+    // Neck coming from top-right
+    final neck = Path();
+    neck.moveTo(r.right - bw * 0.2, r.top);
+    neck.quadraticBezierTo(r.left, r.top, r.left, r.top + h * 0.6);
+    neck.lineTo(r.left + bw, r.top + h * 0.6);
+    neck.quadraticBezierTo(r.left + bw, r.top + bw, r.right - bw * 0.2, r.top + bw);
+    neck.close();
+    
+    final combined = Path.combine(PathOperation.union, path, neck);
+    
+    // Belly hole
+    Path hole = Path()..addOval(Rect.fromCenter(center: Offset(r.center.dx, r.bottom - h * 0.28), width: w * 0.35, height: h * 0.25));
+    return Path.combine(PathOperation.difference, combined, hole);
+  }
+
+  static Path _getDigit7Path(Rect r) {
+    final double w = r.width;
+    final double h = r.height;
+    final double bw = w * 0.38;
+    
+    // Thick Top Bar
+    Path path = Path()..addRRect(RRect.fromRectAndRadius(
+      Rect.fromLTWH(r.left, r.top, w, bw),
+      Radius.circular(bw * 0.2),
+    ));
+    
+    // Thick Curved Leg
+    Path slant = Path();
+    slant.moveTo(r.right, r.top);
+    // Use h to define the bottom point relative to the rect
+    slant.quadraticBezierTo(r.right, r.top + h, r.left + bw * 0.5, r.top + h);
+    slant.lineTo(r.left - w * 0.05, r.top + h);
+    slant.quadraticBezierTo(r.right - bw, r.top + h, r.right - bw, r.top + bw);
+    slant.close();
+    
+    return Path.combine(PathOperation.union, path, slant);
+  }
+
+  static Path _getDigit8Path(Rect r) {
+    final double w = r.width;
+    final double h = r.height;
+    
+    // Two stacked ovals
+    Path top = Path()..addOval(Rect.fromLTWH(r.left + w * 0.05, r.top, w * 0.9, h * 0.55));
+    Path bottom = Path()..addOval(Rect.fromLTWH(r.left, r.top + h * 0.4, w, h * 0.6));
+    Path union = Path.combine(PathOperation.union, top, bottom);
+    
+    // Internal holes (characterful)
+    Path hole1 = Path()..addOval(Rect.fromCenter(center: Offset(r.center.dx, r.top + h * 0.28), width: w * 0.25, height: h * 0.15));
+    Path hole2 = Path()..addOval(Rect.fromCenter(center: Offset(r.center.dx, r.bottom - h * 0.28), width: w * 0.3, height: h * 0.2));
+    
+    Path combined = Path.combine(PathOperation.difference, union, hole1);
+    return Path.combine(PathOperation.difference, combined, hole2);
+  }
+
+  static Path _getDigit9Path(Rect r) {
+    final double w = r.width;
+    final double h = r.height;
+    final double bw = w * 0.35;
+    
+    Path body = Path()..addOval(Rect.fromLTWH(r.left, r.top, w, h * 0.65));
+    Path tail = Path();
+    tail.moveTo(r.right, r.top + h * 0.4);
+    tail.quadraticBezierTo(r.right, r.bottom, r.left + bw * 0.5, r.bottom);
+    tail.lineTo(r.left, r.bottom);
+    tail.lineTo(r.left, r.bottom - bw);
+    tail.quadraticBezierTo(r.right - bw, r.bottom - bw, r.right - bw, r.top + h * 0.4);
+    tail.close();
+    
+    Path combined = Path.combine(PathOperation.union, body, tail);
+    Path hole = Path()..addOval(Rect.fromCenter(center: Offset(r.center.dx, r.top + h * 0.28), width: w * 0.3, height: h * 0.25));
+    return Path.combine(PathOperation.difference, combined, hole);
+  }
+
+  @override
+  bool shouldReclip(YearGridClipper old) => old.year != year || old.index != index;
+}
+
+class YearGridPainter extends CustomPainter {
+  final String year;
+  final Color color;
+  final double width;
+  YearGridPainter({required this.year, required this.color, required this.width});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (width < 0.5) return;
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = width
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    for (int i = 0; i < 4; i++) {
+        canvas.drawPath(YearGridClipper(year: year, index: i).getClip(size), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(YearGridPainter old) =>
+      old.year != year || old.color != color || old.width != width;
 }
 
 
@@ -2737,7 +3414,148 @@ class ComicBurst5Painter extends CustomPainter {
   bool shouldRepaint(ComicBurst5Painter oldDelegate) => true;
 }
 
+class StarBurst5Clipper extends CustomClipper<Path> {
+  final int index;
+  StarBurst5Clipper({required this.index});
+
+  @override
+  Path getClip(Size size) => getStarKitePath(index, size);
+
+  static Path getStarKitePath(int index, Size size) {
+    double w = size.width, h = size.height;
+    double cx = w / 2, cy = h / 2;
+    double outerR = math.min(w, h) * 0.5;
+    double innerR = outerR * 0.4;
+
+    double baseAngle = -math.pi / 2 + (index * 2 * math.pi / 5);
+    double leftAngle = baseAngle - math.pi / 5;
+    double rightAngle = baseAngle + math.pi / 5;
+
+    Path p = Path();
+    p.moveTo(cx, cy);
+    p.lineTo(cx + innerR * math.cos(leftAngle), cy + innerR * math.sin(leftAngle));
+    p.lineTo(cx + outerR * math.cos(baseAngle), cy + outerR * math.sin(baseAngle));
+    p.lineTo(cx + innerR * math.cos(rightAngle), cy + innerR * math.sin(rightAngle));
+    p.close();
+
+    return p;
+  }
+
+  @override
+  bool shouldReclip(StarBurst5Clipper oldClipper) => index != oldClipper.index;
+}
+
+class StarBurst5Painter extends CustomPainter {
+  final Color color;
+  final double width;
+  StarBurst5Painter({required this.color, required this.width});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (width < 0.5) return;
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = width
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    for (int i = 0; i < 5; i++) {
+      canvas.drawPath(StarBurst5Clipper.getStarKitePath(i, size), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(StarBurst5Painter oldDelegate) => 
+      color != oldDelegate.color || width != oldDelegate.width;
+}
+
+// ── Staircase 5 ──────────────────────────────────────────────────────────────
+// Layout (all coords are fractions of canvas W×H):
+//
+//  +--1/3--+--1/3--+--1/3--+
+//  |  [0]  |       |       |  0→40%
+//  +  top  | [2]   | [4]   |
+//  |  left | mid   | right |  40→60%
+//  +--left-+       +       |
+//  |  [1]  | [3]   |       |  60→100%
+//  | bot   | bot   |       |
+//  | left  | mid   + right +
+//  +-------+-------+-------+
+//
+// img0: left col,  rows 0–40%
+// img1: left col,  rows 40–100%
+// img2: mid col,   rows 0–60%
+// img3: mid col,   rows 60–100%
+// img4: right col, rows 0–100%
+//
+// Internal seams (painted once each):
+//   V1: x=1/3, full height
+//   V2: x=2/3, full height
+//   H1: y=0.4, x=0 → x=1/3       (between img0 and img1)
+//   H2: y=0.6, x=1/3 → x=2/3     (between img2 and img3)
+// ─────────────────────────────────────────────────────────────────────────────
+class StaircaseClipper extends CustomClipper<Path> {
+  final int index;
+  StaircaseClipper({required this.index});
+
+  static Rect getCell(int index, Size size) {
+    final w = size.width, h = size.height;
+    const c1 = 1 / 3, c2 = 2 / 3;
+    const r1 = 0.40, r2 = 0.60;
+    switch (index) {
+      case 0: return Rect.fromLTWH(0,    0,    w * c1,        h * r1);
+      case 1: return Rect.fromLTWH(0,    h*r1, w * c1,        h * (1 - r1));
+      case 2: return Rect.fromLTWH(w*c1, 0,    w * (c2 - c1), h * r2);
+      case 3: return Rect.fromLTWH(w*c1, h*r2, w * (c2 - c1), h * (1 - r2));
+      case 4: return Rect.fromLTWH(w*c2, 0,    w * (1 - c2),  h);
+      default: return Rect.zero;
+    }
+  }
+
+  @override
+  Path getClip(Size size) => Path()..addRect(getCell(index, size));
+
+  @override
+  bool shouldReclip(StaircaseClipper old) => old.index != index;
+}
+
+class StaircasePainter extends CustomPainter {
+  final Color color;
+  final double width;
+  StaircasePainter({required this.color, required this.width});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (width < 0.5) return;
+    final p = Paint()
+      ..color = color
+      ..strokeWidth = width
+      ..strokeCap = StrokeCap.square
+      ..style = PaintingStyle.stroke;
+
+    final w = size.width, h = size.height;
+    const c1 = 1 / 3, c2 = 2 / 3;
+    const r1 = 0.40, r2 = 0.60;
+
+    // Draw only the 4 internal seam lines — each drawn exactly once
+    // V1: full-height vertical at x = c1
+    canvas.drawLine(Offset(w * c1, 0), Offset(w * c1, h), p);
+    // V2: full-height vertical at x = c2
+    canvas.drawLine(Offset(w * c2, 0), Offset(w * c2, h), p);
+    // H1: horizontal at y = r1 for left column only
+    canvas.drawLine(Offset(0, h * r1), Offset(w * c1, h * r1), p);
+    // H2: horizontal at y = r2 for middle column only
+    canvas.drawLine(Offset(w * c1, h * r2), Offset(w * c2, h * r2), p);
+  }
+
+  @override
+  bool shouldRepaint(StaircasePainter old) =>
+      old.color != color || old.width != width;
+}
+
 class MonthClipper extends CustomClipper<Path> {
+
   final int index;
   MonthClipper({required this.index});
 
@@ -2809,38 +3627,32 @@ class PinwheelClipper extends CustomClipper<Path> {
   /// Each petal is a 90° rotation of the base (index 0 points UP).
   static Path getPetalPath(int index, Size size) {
     double w = size.width, h = size.height;
-    double cx = w / 2, cy = h / 2;
-    double r = math.min(w, h) * 0.50;
+    double cx = w * 0.5, cy = h * 0.5;
 
-    // ── Petal geometry (base petal points UP) ──────────────────────────────
-    // Sharp inner tip: at canvas center (cx, cy)
-    // Wing corners: left (cx-hw, wingY) and right (cx+hw, wingY)
-    // Outer peak:  (cx, peakY) — the topmost point of the rounded arc
-    double hw    = r * 0.65;         // half-width at the wing corners
-    double wingY = cy - r * 0.42;    // Y position of the two wing corners
-    double peakY = cy - r * 0.96;    // Y position of the outer rounded peak
+    // Base vane (points UP: index 0)
+    // Relative coordinates to center:
+    List<Offset> basePoints = [
+      const Offset(0.0, -0.13),   // Bottom middle tip
+      const Offset(0.35, -0.13),  // Inner bottom right
+      const Offset(0.18, -0.45),  // Outer top right
+      const Offset(-0.18, -0.45), // Outer top left
+    ];
 
-    Path petal = Path();
-    petal.moveTo(cx, cy);                      // ① sharp inner tip at center
-    petal.lineTo(cx - hw, wingY);             // ② straight line to left wing corner
-
-    // ③ Smooth outer arc from left corner → top peak → right corner
-    //    Two quadratic béziers meet at the peak for a clean rounded top
-    petal.quadraticBezierTo(cx - hw * 0.10, peakY, cx, peakY);
-    petal.quadraticBezierTo(cx + hw * 0.10, peakY, cx + hw, wingY);
-
-    petal.lineTo(cx, cy);                      // ④ straight line back to tip
-    petal.close();
-
-    // Rotate by index × 90° around the canvas center
-    if (index != 0) {
-      final matrix = Matrix4.identity()
-        ..translate(cx, cy)
-        ..rotateZ(index * math.pi / 2)
-        ..translate(-cx, -cy);
-      return petal.transform(matrix.storage);
+    Path vane = Path();
+    for (int i = 0; i < basePoints.length; i++) {
+      double angle = index * math.pi / 2;
+      double px = basePoints[i].dx * w;
+      double py = basePoints[i].dy * h;
+      
+      // Rotate point (px, py) around (0,0) center
+      double rx = px * math.cos(angle) - py * math.sin(angle);
+      double ry = px * math.sin(angle) + py * math.cos(angle);
+      
+      if (i == 0) vane.moveTo(cx + rx, cy + ry);
+      else vane.lineTo(cx + rx, cy + ry);
     }
-    return petal;
+    vane.close();
+    return vane;
   }
 
   @override

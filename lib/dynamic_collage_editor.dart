@@ -519,6 +519,18 @@ class _DynamicCollageEditorState extends State<DynamicCollageEditor>
       case 'torn_paper':
         clipper = TornPaperClipper(index: index);
         break;
+      case 'zigzag_band':
+        clipper = ZigzagBandClipper(index: index);
+        break;
+      case 'spiky_zigzag':
+        clipper = SpikyZigzagClipper(index: index);
+        break;
+      case 'shape_grid_4':
+        clipper = ArtisticShapeGridClipper(index: index);
+        break;
+      case 'dad_heart':
+        clipper = DadHeartClipper(index: index);
+        break;
       case 'torn_diagonal':
         clipper = TornDiagonalClipper(index: index);
         break;
@@ -542,6 +554,9 @@ class _DynamicCollageEditorState extends State<DynamicCollageEditor>
         break;
       case 'fan_burst_5':
         clipper = FanBurst5Clipper(index: index);
+        break;
+      case 'star_burst_5':
+        clipper = StarBurst5Clipper(index: index);
         break;
       case 'comic_burst_5':
         clipper = ComicBurst5Clipper(index: index);
@@ -575,6 +590,15 @@ class _DynamicCollageEditorState extends State<DynamicCollageEditor>
         break;
       case 'slanted_film_4':
         clipper = SlantedFilmStrip4Clipper(index: index);
+        break;
+      case 'diagonal_heart':
+        clipper = DiagonalHeartClipper(index: index);
+        break;
+      case 'staircase_5':
+        clipper = StaircaseClipper(index: index);
+        break;
+      case 'year_grid_4':
+        clipper = YearGridClipper(year: DateTime.now().year.toString(), index: index);
         break;
     }
 
@@ -1333,6 +1357,23 @@ class GlassSplitLinePainter extends CustomPainter {
         path.lineTo(w, h * 0.5);
         path.addPath(_getHeartShape(w * 0.5, h * 0.4, w * 0.75), Offset.zero);
         break;
+      case 'diagonal_heart':
+        // Centered heart shape path
+        Path heartPath = _getHeartShape(w * 0.5, h * 0.4, w * 0.75);
+        
+        // Clip the diagonal line so it doesn't cross the heart
+        canvas.save();
+        canvas.clipPath(Path.combine(
+          PathOperation.difference,
+          Path()..addRect(Rect.fromLTWH(0, 0, w, h)),
+          heartPath,
+        ));
+        canvas.drawLine(Offset(w, 0), Offset(0, h), paint);
+        canvas.restore();
+        
+        // Draw the heart shape boundary
+        path.addPath(heartPath, Offset.zero);
+        break;
       case 'lotus':
         path.addPath(LotusSplitClipper.getLotusPath(w, h, 0), Offset.zero);
         path.addPath(LotusSplitClipper.getLotusPath(w, h, 1), Offset.zero);
@@ -1642,6 +1683,47 @@ class GlassSplitLinePainter extends CustomPainter {
           canvas.drawPath(sectionPath, borderPaint);
         }
         break;
+      case 'zigzag_band':
+        // Draw the two seam zigzag lines (top divider + bottom divider)
+        final zzPaint = Paint()
+          ..color = lineColor
+          ..strokeWidth = lineWidth
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.square
+          ..strokeJoin = StrokeJoin.miter;
+        // The seam paths are the outlines of the middle band (index=1),
+        // which gives us both dividers in one path.
+        canvas.drawPath(
+          ZigzagBandClipper.getZigzagBandPath(1, size),
+          zzPaint,
+        );
+        break;
+      case 'spiky_zigzag':
+        final szPaint = Paint()
+          ..color = lineColor
+          ..strokeWidth = lineWidth
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.square
+          ..strokeJoin = StrokeJoin.miter;
+        canvas.drawPath(
+          SpikyZigzagClipper.getSpikyZigzagBandPath(1, size),
+          szPaint,
+        );
+        break;
+      case 'shape_grid_4':
+        final sgPaint = Paint()
+          ..color = lineColor
+          ..strokeWidth = lineWidth
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round;
+        for (int i = 0; i < imageCount; i++) {
+          canvas.drawPath(
+            ArtisticShapeGridClipper.getShapePath(i, size),
+            sgPaint,
+          );
+        }
+        break;
       case 'torn_diagonal':
         const double inset = 5.0;
         final borderPaintTorn = Paint()
@@ -1687,6 +1769,26 @@ class GlassSplitLinePainter extends CustomPainter {
       case 'diamond_grid_4':
         DiamondGrid4Painter(color: lineColor, width: lineWidth).paint(canvas, size);
         break;
+      case 'dad_heart':
+        // Draw the 5 shapes (Rect, Heart, D, A, D) outlines
+        for (int i = 0; i < imageCount; i++) {
+          final isHeart = (i == 1);
+          final dhPaint = Paint()
+            ..color = isHeart ? const Color(0xFF00C6FF) : lineColor
+            ..strokeWidth = isHeart ? lineWidth * 1.5 : lineWidth
+            ..style = PaintingStyle.stroke
+            ..strokeCap = StrokeCap.round
+            ..strokeJoin = StrokeJoin.round;
+          
+          canvas.drawPath(
+            DadHeartClipper.getDadHeartPath(i, size),
+            dhPaint,
+          );
+        }
+        break;
+      case 'year_grid_4':
+        YearGridPainter(year: DateTime.now().year.toString(), color: lineColor, width: lineWidth).paint(canvas, size);
+        break;
 
       case 'hearts_flower':
       case 'hearts_balloon':
@@ -1706,6 +1808,12 @@ class GlassSplitLinePainter extends CustomPainter {
         for (int i = 0; i < 5; i++) {
           canvas.drawPath(FanBurst5Clipper.getFanBurst5Path(i, size), paint);
         }
+        break;
+      case 'star_burst_5':
+        StarBurst5Painter(color: lineColor, width: lineWidth).paint(canvas, size);
+        break;
+      case 'staircase_5':
+        StaircasePainter(color: lineColor, width: lineWidth).paint(canvas, size);
         break;
       case 'comic_burst_5':
         // Professional Comic Red with bold thickness
@@ -1943,14 +2051,27 @@ class GridLinesPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (lineWidth < 0.5) return;
 
+    // To prevent "stacking" borders (where shared edges are drawn twice),
+    // we draw the internal lines using a path, but the simplest way to avoid
+    // doubling is to just stroke the union of all rects, which leaves no inner lines.
+    // So instead, we just draw the rectangles but we don't worry about doubling 
+    // IF we use an opaque color. BUT for semi-transparent colors or anti-aliasing, 
+    // it stacks. Let's just draw each cell carefully.
+    
+    // Actually, drawing rects is usually fine for solid colors. But if they overlap 
+    // because cells don't share exact edges, they stack.
+    // Let's just use the rects directly. To fix corner stacking, we can use 
+    // StrokeJoin.miter.
     final paint = Paint()
       ..color = lineColor
       ..strokeWidth = lineWidth
+      ..strokeJoin = StrokeJoin.miter
       ..style = PaintingStyle.stroke;
 
     final w = size.width;
     final h = size.height;
 
+    // We can just draw each cell rect. 
     for (final cell in cells) {
       final rect = Rect.fromLTWH(
         w * cell.left,
