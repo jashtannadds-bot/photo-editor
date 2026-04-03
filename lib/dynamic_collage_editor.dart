@@ -422,6 +422,9 @@ class _DynamicCollageEditorState extends State<DynamicCollageEditor>
       case 'diagonal':
         clipper = DiagonalSplitClipper(index: index);
         break;
+      case 'diagonal_star':
+        clipper = DiagonalStarClipper(index: index);
+        break;
       case 'reverse_diagonal':
         clipper = ReverseDiagonalSplitClipper(index: index);
         break;
@@ -465,13 +468,16 @@ class _DynamicCollageEditorState extends State<DynamicCollageEditor>
         clipper = TriangleClipper(index: index, totalCount: 3);
         break;
       case 'honeycomb4':
-        clipper = HoneycombClipper();
+        clipper = HoneycombClipper(index: index);
         break;
       case 'crest5':
-        clipper = HoneycombClipper(); // Use honeycomb as a base for crest
+        clipper = HoneycombClipper(index: index); // Use honeycomb as a base for crest
         break;
       case 'slanted':
         clipper = SlantedClipper(slant: 0.15, index: index);
+        break;
+      case 'slanted_rows':
+        clipper = SlantedRowClipper(index: index, totalCount: images.length);
         break;
       case 'parallelogram':
         clipper = ParallelogramClipper(index: index);
@@ -498,9 +504,7 @@ class _DynamicCollageEditorState extends State<DynamicCollageEditor>
       case 'stamp_trio':
         clipper = StampTrioClipper(index: index, totalCount: images.length);
         break;
-      case 'slanted_rows':
-        clipper = SlantedRowClipper(index: index, totalCount: images.length);
-        break;
+
       case 'hexagon_split':
         clipper = HexagonSplitClipper(index: index, totalCount: images.length);
         break;
@@ -579,11 +583,14 @@ class _DynamicCollageEditorState extends State<DynamicCollageEditor>
       case 'date_dynamic':
         clipper = DynamicTextClipper(index: index);
         break;
-      case 'pinwheel_4':
+      case 'pinwheel_5':
         clipper = PinwheelClipper(index: index);
         break;
       case 'asymmetric_arch_4':
         clipper = AsymmetricArch4Clipper(index: index);
+        break;
+      case 'arc_trio':
+        clipper = ArcTrio3Clipper(index: index);
         break;
       case 'diamond_grid_4':
         clipper = DiamondGrid4Clipper(index: index);
@@ -599,6 +606,18 @@ class _DynamicCollageEditorState extends State<DynamicCollageEditor>
         break;
       case 'year_grid_4':
         clipper = YearGridClipper(year: DateTime.now().year.toString(), index: index);
+        break;
+      case 'slanted_gallery_4':
+        clipper = SlantedGallery4Clipper(index: index);
+        break;
+      case 'artistic_hands_2':
+        clipper = ArtisticHands2Clipper(index: index);
+        break;
+      case 'interlocking_locks_2':
+        clipper = InterlockingLocks2Clipper(index: index);
+        break;
+      case 'slanted_6':
+        clipper = SlantedSixClipper(index: index);
         break;
     }
 
@@ -1403,16 +1422,31 @@ class GlassSplitLinePainter extends CustomPainter {
         path.lineTo(w, h * 0.3);
         break;
       case 'slanted':
-        double s = 0.2 * w;
-        path.moveTo(s, 0);
-        path.lineTo(w - s, h);
-        break;
       case 'parallelogram':
-        double s = 0.2 * w;
-        path.moveTo(s, 0);
-        path.lineTo(0, h);
-        path.moveTo(w, 0);
-        path.lineTo(w - s, h);
+      case 'capsule':
+      case 'arch':
+      case 'blob0':
+      case 'blob1':
+        for (int i = 0; i < imageCount; i++) {
+          CustomClipper<Path>? tempClipper;
+          if (clipType == 'slanted') {
+            tempClipper = SlantedClipper(slant: 0.15, index: i);
+          } else if (clipType == 'capsule') {
+            tempClipper = CapsuleClipper(index: i, totalCount: imageCount);
+          } else if (clipType == 'arch') {
+            tempClipper = ArchClipper(index: i, totalCount: imageCount);
+          } else if (clipType == 'blob0') {
+            tempClipper = OrganicBlobClipper(0, index: i, totalCount: imageCount);
+          } else if (clipType == 'blob1') {
+            tempClipper = OrganicBlobClipper(1, index: i, totalCount: imageCount);
+          } else if (clipType == 'parallelogram') {
+            tempClipper = ParallelogramClipper(index: i);
+          }
+          
+          if (tempClipper != null) {
+            canvas.drawPath(tempClipper.getClip(size), paint);
+          }
+        }
         break;
       case 'circle_inset':
         path.addOval(
@@ -1434,12 +1468,12 @@ class GlassSplitLinePainter extends CustomPainter {
         path.lineTo(0, h);
         break;
       case 'triangle_trio':
-        for (int i = 0; i < imageCount; i++) {
-          path.moveTo(w * 0.5, 0);
-          path.lineTo(w, h);
-          path.lineTo(0, h);
-          path.close();
-        }
+        // Main diagonal split
+        path.moveTo(0, 0);
+        path.lineTo(w, h);
+        // Sub split for the bottom-left half
+        path.moveTo(0, h);
+        path.lineTo(w * 0.5, h * 0.5);
         break;
       case 'trapezoid_duo':
         // Only draw inner split lines
@@ -1448,69 +1482,7 @@ class GlassSplitLinePainter extends CustomPainter {
         path.lineTo(w * 0.8, h * 0.5);
         path.lineTo(w, 0);
         break;
-      case 'capsule':
-        for (int i = 0; i < imageCount; i++) {
-          double unitH = h / (imageCount > 0 ? imageCount : 1);
-          double top = i * unitH + (unitH * 0.1);
-          double capsuleH = unitH * 0.8;
-          path.addRRect(RRect.fromRectAndRadius(
-            Rect.fromLTWH(w * 0.1, top, w * 0.8, capsuleH),
-            Radius.circular(capsuleH / 2),
-          ));
-        }
-        break;
-      case 'arch':
-        for (int i = 0; i < imageCount; i++) {
-          double unitW = w / (imageCount > 0 ? imageCount : 1);
-          double left = i * unitW + (unitW * 0.05);
-          double archW = unitW * 0.9;
-          double archH = h * 0.7;
-          double archTop = h * 0.15;
-          path.moveTo(left, archTop + archH);
-          path.lineTo(left, archTop + archW * 0.5);
-          path.arcToPoint(Offset(left + archW, archTop + archW * 0.5), radius: Radius.circular(archW * 0.5), clockwise: true);
-          path.lineTo(left + archW, archTop + archH);
-          path.close();
-        }
-        break;
-      case 'honeycomb4':
-      case 'crest5':
-        path.moveTo(w * 0.5, 0);
-        path.lineTo(w, h * 0.25);
-        path.lineTo(w, h * 0.75);
-        path.lineTo(w * 0.5, h);
-        path.lineTo(0, h * 0.75);
-        path.lineTo(0, h * 0.25);
-        path.close();
-        break;
-      case 'blob0':
-      case 'blob1':
-        for (int i = 0; i < imageCount; i++) {
-          double scale = 1.0 / (imageCount > 1 ? 1.5 : 1.0);
-          double effectiveW = w * scale;
-          double effectiveH = h * scale;
-          double xOffset = 0, yOffset = 0;
-          if (imageCount > 1) {
-            int cols = (imageCount > 2) ? 2 : 1;
-            xOffset = (i % cols) * (w / cols) * 0.5;
-            yOffset = (i ~/ cols) * (h / ((imageCount+1)~/2)) * 0.5;
-          }
-          if (clipType == 'blob0') {
-            path.moveTo(xOffset + effectiveW * 0.2, yOffset + effectiveH * 0.1);
-            path.quadraticBezierTo(xOffset + effectiveW * 0.8, yOffset, xOffset + effectiveW * 0.9, yOffset + effectiveH * 0.3);
-            path.quadraticBezierTo(xOffset + effectiveW, yOffset + effectiveH * 0.7, xOffset + effectiveW * 0.7, yOffset + effectiveH * 0.9);
-            path.quadraticBezierTo(xOffset + effectiveW * 0.3, yOffset + effectiveH, xOffset + effectiveW * 0.1, yOffset + effectiveH * 0.7);
-            path.quadraticBezierTo(xOffset, yOffset + effectiveH * 0.3, xOffset + effectiveW * 0.2, yOffset + effectiveH * 0.1);
-          } else {
-            path.moveTo(xOffset + effectiveW * 0.1, yOffset + effectiveH * 0.4);
-            path.quadraticBezierTo(xOffset + effectiveW * 0.2, yOffset, xOffset + effectiveW * 0.6, yOffset + effectiveH * 0.1);
-            path.quadraticBezierTo(xOffset + effectiveW, yOffset + effectiveH * 0.2, xOffset + effectiveW * 0.9, yOffset + effectiveH * 0.6);
-            path.quadraticBezierTo(xOffset + effectiveW * 0.8, yOffset + effectiveH, xOffset + effectiveW * 0.4, yOffset + effectiveH * 0.9);
-            path.quadraticBezierTo(xOffset, yOffset + effectiveH * 0.8, xOffset + effectiveW * 0.1, yOffset + effectiveH * 0.4);
-          }
-          path.close();
-        }
-        break;
+
       case 'stamp_trio':
         for (int i = 0; i < imageCount; i++) {
           double s = w * 0.42;
@@ -1567,13 +1539,7 @@ class GlassSplitLinePainter extends CustomPainter {
         double iStartX = startX + barW * 2 + midW + gap;
         path.addRRect(RRect.fromRectAndRadius(Rect.fromLTWH(iStartX, startY, barW, ch), Radius.circular(radius)));
         break;
-      case 'slanted_rows':
-        for (int i = 0; i < imageCount; i++) {
-          path.addPath(
-              SlantedRowClipper(index: i, totalCount: imageCount).getClip(size),
-              Offset.zero);
-        }
-        break;
+
       case 'hexagon_split':
         path.addPath(HexagonSplitClipper.getHexagonPath(size), Offset.zero);
         for (int i = 0; i < imageCount; i++) {
@@ -1622,11 +1588,19 @@ class GlassSplitLinePainter extends CustomPainter {
             ..translate(cx, cy)
             ..rotateZ(angle);
 
+          double imgW = frameW * 0.8;
+          double imgH = frameH * 0.9;
+          Rect imgRect =
+              Rect.fromCenter(center: Offset.zero, width: imgW, height: imgH);
+
           // Draw Black Frame
           Rect frameRect =
               Rect.fromCenter(center: Offset.zero, width: frameW, height: frameH);
           Path framePath = Path()..addRect(frameRect);
-          Path transformedFrame = framePath.transform(matrix.storage);
+          Path windowPath = Path()..addRect(imgRect);
+          Path cutoutFrame = Path.combine(PathOperation.difference, framePath, windowPath);
+
+          Path transformedFrame = cutoutFrame.transform(matrix.storage);
           canvas.drawPath(transformedFrame, Paint()..color = Colors.black);
 
           // Draw White Perforations (Holes)
@@ -1657,10 +1631,6 @@ class GlassSplitLinePainter extends CustomPainter {
           }
 
           // Draw image border (white thin line)
-          double imgW = frameW * 0.8;
-          double imgH = frameH * 0.9;
-          Rect imgRect =
-              Rect.fromCenter(center: Offset.zero, width: imgW, height: imgH);
           Path imgPath = Path()..addRect(imgRect);
           canvas.drawPath(
               imgPath.transform(matrix.storage),
@@ -1748,7 +1718,7 @@ class GlassSplitLinePainter extends CustomPainter {
       case 'christmas_star':
         ChristmasStarPainter(color: lineColor, width: lineWidth).paint(canvas, size);
         break;
-      case 'pinwheel_4':
+      case 'pinwheel_5':
         PinwheelPainter(color: lineColor, width: lineWidth).paint(canvas, size);
         break;
       case 'slanted_film_4':
@@ -1766,8 +1736,17 @@ class GlassSplitLinePainter extends CustomPainter {
       case 'asymmetric_arch_4':
         AsymmetricArch4Painter(color: lineColor, width: lineWidth).paint(canvas, size);
         break;
+      case 'arc_trio':
+        ArcTrio3Painter(color: lineColor, width: lineWidth).paint(canvas, size);
+        break;
       case 'diamond_grid_4':
         DiamondGrid4Painter(color: lineColor, width: lineWidth).paint(canvas, size);
+        break;
+      case 'diagonal_star':
+        DiagonalStarPainter(color: lineColor, width: lineWidth).paint(canvas, size);
+        break;
+      case 'honeycomb4':
+        HoneycombPainter(color: lineColor, width: lineWidth).paint(canvas, size);
         break;
       case 'dad_heart':
         // Draw the 5 shapes (Rect, Heart, D, A, D) outlines
@@ -1788,6 +1767,21 @@ class GlassSplitLinePainter extends CustomPainter {
         break;
       case 'year_grid_4':
         YearGridPainter(year: DateTime.now().year.toString(), color: lineColor, width: lineWidth).paint(canvas, size);
+        break;
+      case 'slanted_gallery_4':
+        SlantedGallery4Painter(color: lineColor, width: lineWidth).paint(canvas, size);
+        break;
+      case 'artistic_hands_2':
+        ArtisticHands2Painter(color: lineColor, width: lineWidth).paint(canvas, size);
+        break;
+      case 'interlocking_locks_2':
+        InterlockingLocks2Painter(color: lineColor, width: lineWidth).paint(canvas, size);
+        break;
+      case 'slanted_6':
+        SlantedSixPainter(color: lineColor, width: lineWidth).paint(canvas, size);
+        break;
+      case 'slanted_rows':
+        SlantedRowPainter(color: lineColor, width: lineWidth, totalCount: imageCount).paint(canvas, size);
         break;
 
       case 'hearts_flower':
@@ -2081,6 +2075,17 @@ class GridLinesPainter extends CustomPainter {
       );
       canvas.drawRect(rect, paint);
     }
+
+    // Fix inner/outer seam mismatch: 
+    // The container clips bounding edges in half. By drawing a double-thick border 
+    // strictly around the outer canvas edge, the visible portion matches the inner borders.
+    final outerPaint = Paint()
+      ..color = lineColor
+      ..strokeWidth = lineWidth * 2
+      ..strokeJoin = StrokeJoin.miter
+      ..style = PaintingStyle.stroke;
+      
+    canvas.drawRect(Rect.fromLTWH(0, 0, w, h), outerPaint);
   }
 
   @override

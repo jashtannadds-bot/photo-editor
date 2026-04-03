@@ -970,8 +970,27 @@ class TriangleClipper extends CustomClipper<Path> {
         mask.close();
         return Path.combine(PathOperation.difference, path, mask);
       }
+    } else if (totalCount == 3) {
+      // Triangle Trio - Partition into 3 stitched triangles
+      if (index == 0) {
+        // Top-Right Half
+        path.moveTo(0, 0);
+        path.lineTo(w, 0);
+        path.lineTo(w, h);
+      } else if (index == 1) {
+        // Bottom-Left Sub 1
+        path.moveTo(0, 0);
+        path.lineTo(0, h);
+        path.lineTo(w * 0.5, h * 0.5);
+      } else {
+        // Bottom-Left Sub 2
+        path.moveTo(w * 0.5, h * 0.5);
+        path.lineTo(0, h);
+        path.lineTo(w, h);
+      }
+      path.close();
     } else {
-      // For 3+ images, unique triangles
+      // For 4+ images, unique triangles
       double unitW = w / (totalCount > 1 ? 2 : 1);
       double unitH = h / ((totalCount + 1) ~/ 2);
       double left = (index % 2) * unitW;
@@ -1018,23 +1037,69 @@ class TrapezoidClipper extends CustomClipper<Path> {
 }
 
 class HoneycombClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    final path = Path();
-    double w = size.width;
-    double h = size.height;
-    path.moveTo(w * 0.5, 0);
-    path.lineTo(w, h * 0.25);
-    path.lineTo(w, h * 0.75);
-    path.lineTo(w * 0.5, h);
-    path.lineTo(0, h * 0.75);
-    path.lineTo(0, h * 0.25);
+  final int index;
+  HoneycombClipper({required this.index});
+
+  static Path getHexagonPath(int index, Size size) {
+    double w = size.width, h = size.height;
+    double cx = w / 2, cy = h / 2;
+    
+    double R = math.min(w, h) * 0.23;
+    double W = math.sqrt(3) * R;
+
+    List<Offset> centers = [
+      Offset(-W/2, 0),       // 0: Left
+      Offset(W/2, 0),        // 1: Right
+      Offset(0, -1.5 * R),   // 2: Top
+      Offset(0, 1.5 * R),    // 3: Bottom
+    ];
+
+    if (index < 0 || index > 3) return Path();
+
+    Offset center = centers[index];
+    
+    Path path = Path();
+    for (int i = 0; i < 6; i++) {
+      double angle = math.pi / 2 + i * math.pi / 3;
+      double dx = math.cos(angle) * R;
+      double dy = math.sin(angle) * R;
+      
+      if (i == 0) path.moveTo(cx + center.dx + dx, cy + center.dy + dy);
+      else path.lineTo(cx + center.dx + dx, cy + center.dy + dy);
+    }
     path.close();
+    
     return path;
   }
 
   @override
-  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+  Path getClip(Size size) => getHexagonPath(index, size);
+
+  @override
+  bool shouldReclip(HoneycombClipper old) => old.index != index;
+}
+
+class HoneycombPainter extends CustomPainter {
+  final Color color;
+  final double width;
+  HoneycombPainter({required this.color, required this.width});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (width < 0.5) return;
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = width
+      ..style = PaintingStyle.stroke
+      ..strokeJoin = StrokeJoin.miter;
+
+    for (int i = 0; i < 4; i++) {
+      canvas.drawPath(HoneycombClipper.getHexagonPath(i, size), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(HoneycombPainter old) => old.color != color || old.width != width;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1176,75 +1241,61 @@ class OrganicBlobClipper extends CustomClipper<Path> {
     double w = size.width;
     double h = size.height;
 
-    // Scale and offset based on index to ensure visibility
-    double scale = 1.0 / (totalCount > 1 ? 1.5 : 1.0);
-    double effectiveW = w * scale;
-    double effectiveH = h * scale;
+    // We define a cleaner set of coordinates for 4 balanced blobs
+    double effectiveW = w * 0.48;
+    double effectiveH = h * 0.48;
+    double xOffset = 0, yOffset = 0;
+    double rotation = 0;
 
-    double xOffset = 0;
-    double yOffset = 0;
-
-    if (totalCount > 1) {
-      // Simple grid-ish offset for multi-blobs
+    if (totalCount == 4) {
+      // Balanced "Liquid Bloom" arrangement
+      switch (index) {
+        case 0: xOffset = w * 0.04; yOffset = h * 0.04; rotation = 0.05; break;
+        case 1: xOffset = w * 0.48; yOffset = h * 0.08; rotation = -0.05; break;
+        case 2: xOffset = w * 0.08; yOffset = h * 0.48; rotation = -0.08; break;
+        case 3: xOffset = w * 0.45; yOffset = h * 0.45; rotation = 0.1; break;
+      }
+    } else if (totalCount == 3) {
+      if (index == 0) {
+        effectiveW = w * 0.5; effectiveH = h * 0.5; xOffset = w * 0.05; yOffset = h * 0.05; rotation = 0.1;
+      } else if (index == 1) {
+        effectiveW = w * 0.55; effectiveH = h * 0.55; xOffset = w * 0.25; yOffset = h * 0.25; rotation = -0.1;
+      } else {
+        effectiveW = w * 0.5; effectiveH = h * 0.5; xOffset = w * 0.45; yOffset = h * 0.45; rotation = 0.15;
+      }
+    } else if (totalCount > 1) {
       int cols = (totalCount > 2) ? 2 : 1;
-      xOffset = (index % cols) * (w / cols) * 0.5;
-      yOffset = (index ~/ cols) * (h / ((totalCount + 1) ~/ 2)) * 0.5;
+      xOffset = (index % cols) * (w / cols) * 0.45;
+      yOffset = (index ~/ cols) * (h / ((totalCount + 1) ~/ 2)) * 0.45;
     }
 
-    if (seed == 0) {
-      path.moveTo(xOffset + effectiveW * 0.2, yOffset + effectiveH * 0.1);
-      path.quadraticBezierTo(
-        xOffset + effectiveW * 0.8,
-        yOffset,
-        xOffset + effectiveW * 0.9,
-        yOffset + effectiveH * 0.3,
-      );
-      path.quadraticBezierTo(
-        xOffset + effectiveW,
-        yOffset + effectiveH * 0.7,
-        xOffset + effectiveW * 0.7,
-        yOffset + effectiveH * 0.9,
-      );
-      path.quadraticBezierTo(
-        xOffset + effectiveW * 0.3,
-        yOffset + effectiveH,
-        xOffset + effectiveW * 0.1,
-        yOffset + effectiveH * 0.7,
-      );
-      path.quadraticBezierTo(
-        xOffset,
-        yOffset + effectiveH * 0.3,
-        xOffset + effectiveW * 0.2,
-        yOffset + effectiveH * 0.1,
-      );
-    } else {
-      path.moveTo(xOffset + effectiveW * 0.1, yOffset + effectiveH * 0.4);
-      path.quadraticBezierTo(
-        xOffset + effectiveW * 0.2,
-        yOffset,
-        xOffset + effectiveW * 0.6,
-        yOffset + effectiveH * 0.1,
-      );
-      path.quadraticBezierTo(
-        xOffset + effectiveW,
-        yOffset + effectiveH * 0.2,
-        xOffset + effectiveW * 0.9,
-        yOffset + effectiveH * 0.6,
-      );
-      path.quadraticBezierTo(
-        xOffset + effectiveW * 0.8,
-        yOffset + effectiveH,
-        xOffset + effectiveW * 0.4,
-        yOffset + effectiveH * 0.9,
-      );
-      path.quadraticBezierTo(
-        xOffset,
-        yOffset + effectiveH * 0.8,
-        xOffset + effectiveW * 0.1,
-        yOffset + effectiveH * 0.4,
-      );
-    }
+    // High-quality Organic Silhouettes (varied per index)
+    final List<List<double>> silhouettes = [
+      [0.20, 0.10, 0.85, 0.05, 0.95, 0.35, 1.00, 0.75, 0.75, 0.95, 0.35, 1.00, 0.05, 0.80, 0.05, 0.35],
+      [0.15, 0.30, 0.40, 0.00, 0.85, 0.15, 1.00, 0.50, 0.90, 0.95, 0.40, 1.00, 0.00, 0.85, 0.10, 0.55],
+      [0.35, 0.05, 0.95, 0.20, 0.80, 0.65, 0.95, 0.95, 0.50, 0.85, 0.15, 0.95, 0.25, 0.50, 0.05, 0.25],
+      [0.25, 0.20, 0.75, 0.05, 0.95, 0.40, 0.85, 0.85, 0.55, 1.00, 0.15, 0.90, 0.05, 0.60, 0.20, 0.40],
+    ];
+
+    final s = silhouettes[index % silhouettes.length];
+    
+    path.moveTo(xOffset + effectiveW * s[0], yOffset + effectiveH * s[1]);
+    path.quadraticBezierTo(xOffset + effectiveW * s[2], yOffset + effectiveH * s[3], xOffset + effectiveW * s[4], yOffset + effectiveH * s[5]);
+    path.quadraticBezierTo(xOffset + effectiveW * s[6], yOffset + effectiveH * s[7], xOffset + effectiveW * s[8], yOffset + effectiveH * s[9]);
+    path.quadraticBezierTo(xOffset + effectiveW * s[10], yOffset + effectiveH * s[11], xOffset + effectiveW * s[12], yOffset + effectiveH * s[13]);
+    path.quadraticBezierTo(xOffset + effectiveW * s[14], yOffset + effectiveH * s[15], xOffset + effectiveW * s[0], yOffset + effectiveH * s[1]);
     path.close();
+
+    if (rotation != 0) {
+      final cx = xOffset + effectiveW / 2;
+      final cy = yOffset + effectiveH / 2;
+      final matrix = Matrix4.identity()
+        ..translate(cx, cy)
+        ..rotateZ(rotation)
+        ..translate(-cx, -cy);
+      return path.transform(matrix.storage);
+    }
+    
     return path;
   }
 
@@ -1523,45 +1574,132 @@ class SlantedRowClipper extends CustomClipper<Path> {
   final int totalCount;
   SlantedRowClipper({required this.index, required this.totalCount});
 
-  @override
-  Path getClip(Size size) {
+  static Path getRowPath(int index, int totalCount, Size size) {
     final double w = size.width;
     final double h = size.height;
-    final double rowH = h / 3;
-    final double slantW = w * 0.12;
-    final double gap = 12.0;
+    final double rowH = h / (totalCount > 0 ? totalCount : 1);
+    final double slantW = w * 0.10;
 
-    Path path = Path();
     double top = index * rowH;
     double bottom = (index + 1) * rowH;
 
-    // Apply gaps for a premium look
-    top += gap / 2;
-    bottom -= gap / 2;
+    Path path = Path();
 
-    if (index == 0) {
-      path.moveTo(0, top);
-      path.lineTo(w, top);
-      path.lineTo(w - slantW, bottom);
-      path.lineTo(0, bottom);
-    } else if (index == 1) {
-      path.moveTo(slantW, top);
-      path.lineTo(w, top);
-      path.lineTo(w - slantW, bottom);
-      path.lineTo(0, bottom);
+    // Use alternating slant directions for a more premium zigzag effect
+    if (index % 2 == 0) {
+      // Slant: / \ (Top wider or shifted)
+      double topLeft = (index == 0) ? 0 : slantW;
+      double topRight = w;
+      double bottomLeft = 0;
+      double bottomRight = w - slantW;
+
+      path.moveTo(topLeft, top);
+      path.lineTo(topRight, top);
+      path.lineTo(bottomRight, bottom);
+      path.lineTo(bottomLeft, bottom);
     } else {
-      path.moveTo(slantW, top);
-      path.lineTo(w, top);
-      path.lineTo(w, bottom);
-      path.lineTo(0, bottom);
+      // Slant: \ /
+      double topLeft = 0;
+      double topRight = w - slantW;
+      double bottomLeft = slantW;
+      double bottomRight = w;
+
+      path.moveTo(topLeft, top);
+      path.lineTo(topRight, top);
+      path.lineTo(bottomRight, bottom);
+      path.lineTo(bottomLeft, bottom);
     }
+
     path.close();
     return path;
   }
 
   @override
+  Path getClip(Size size) => getRowPath(index, totalCount, size);
+
+  @override
   bool shouldReclip(SlantedRowClipper old) =>
       old.index != index || old.totalCount != totalCount;
+}
+
+class SlantedRowPainter extends CustomPainter {
+  final Color color;
+  final double width;
+  final int totalCount;
+  SlantedRowPainter({
+    required this.color,
+    required this.width,
+    required this.totalCount,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (width < 0.5) return;
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = width
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.miter;
+
+    final int n = totalCount;
+    for (int i = 0; i < n; i++) {
+      // To "remove from canvas" top/bottom but "do border side of shapes":
+      // We draw the full path but we can also just draw specific segments.
+      // Actually, drawing the full path for each shape works well, 
+      // but if we want to BE EXPLICIT about removing the very top and very bottom:
+      
+      final double rowH = size.height / (n > 0 ? n : 1);
+      final double w = size.width;
+      final double slantW = w * 0.10;
+      double topY = i * rowH;
+      double botY = (i + 1) * rowH;
+
+      if (i % 2 == 0) {
+        // Row 0, 2...
+        double tL = (i == 0) ? 0 : slantW;
+        double tR = w;
+        double bL = 0;
+        double bR = w - slantW;
+
+        // Left Side
+        canvas.drawLine(Offset(bL, botY), Offset(tL, topY), paint);
+        // Right Side
+        canvas.drawLine(Offset(tR, topY), Offset(bR, botY), paint);
+        // Bottom divider (all rows)
+        if (i < n - 1) {
+          canvas.drawLine(Offset(bR, botY), Offset(bL, botY), paint);
+        }
+        // Top divider (only if NOT the very top of canvas)
+        if (i > 0) {
+          canvas.drawLine(Offset(tL, topY), Offset(tR, topY), paint);
+        }
+      } else {
+        // Row 1, 3...
+        double tL = 0;
+        double tR = w - slantW;
+        double bL = slantW;
+        double bR = w;
+
+        // Left Side
+        canvas.drawLine(Offset(bL, botY), Offset(tL, topY), paint);
+        // Right Side
+        canvas.drawLine(Offset(tR, topY), Offset(bR, botY), paint);
+        // Bottom divider
+        if (i < n - 1) {
+          canvas.drawLine(Offset(bR, botY), Offset(bL, botY), paint);
+        }
+        // Top divider
+        if (i > 0) {
+          canvas.drawLine(Offset(tL, topY), Offset(tR, topY), paint);
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(SlantedRowPainter old) =>
+      old.color != color || old.width != width || old.totalCount != totalCount;
 }
 
 class HexagonSplitClipper extends CustomClipper<Path> {
@@ -1708,22 +1846,30 @@ class ILoveUClipper extends CustomClipper<Path> {
     final double cx = w / 2;
     final double cy = h / 2;
 
-    final double ch = h * 0.75;
+    // Standardize Height for all shapes
+    final double charH = h * 0.65;
+    final double charW = w * 0.23; 
 
-    final double charW = w * 0.23; // Uniform width for I and U
+    // Centers for even spacing
+    final double x1 = w * 0.18;
+    final double x2 = cx;
+    final double x3 = w * 0.82;
+
     if (index == 0) {
       // Shape "I" (Capsule)
       return Path()
         ..addRRect(RRect.fromRectAndRadius(
           Rect.fromCenter(
-              center: Offset(w * 0.16, cy), width: charW, height: ch),
+              center: Offset(x1, cy), width: charW, height: charH),
           Radius.circular(charW * 0.5),
         ));
     } else if (index == 1) {
       // Shape "Heart" (❤️)
       final path = Path();
-      double hs = w * 0.38;
-      double hx = cx;
+      // Scale heart to match charH. 
+      // Visual height is approx 0.75 * size
+      double hs = charH / 0.75;
+      double hx = x2;
       double hy = cy - hs * 0.45;
 
       path.moveTo(hx, hy + hs * 0.2);
@@ -1739,17 +1885,16 @@ class ILoveUClipper extends CustomClipper<Path> {
     } else {
       // Shape "U" (Solid Cup, no cutout)
       final path = Path();
-      double ux = w * 0.84;
+      double ux = x3;
       double uy = cy;
-      double uh = ch;
       double ur = charW * 0.5;
 
-      // Solid U shape
-      path.moveTo(ux - charW / 2, uy - uh / 2);
-      path.lineTo(ux - charW / 2, uy + uh / 2 - ur);
-      path.arcToPoint(Offset(ux + charW / 2, uy + uh / 2 - ur),
+      // Solid U shape from standardized charW/charH
+      path.moveTo(ux - charW / 2, uy - charH / 2);
+      path.lineTo(ux - charW / 2, uy + charH / 2 - ur);
+      path.arcToPoint(Offset(ux + charW / 2, uy + charH / 2 - ur),
           radius: Radius.circular(ur), clockwise: false);
-      path.lineTo(ux + charW / 2, uy - uh / 2);
+      path.lineTo(ux + charW / 2, uy - charH / 2);
       path.close();
       return path;
     }
@@ -2111,7 +2256,7 @@ class ArtisticShapeGridClipper extends CustomClipper<Path> {
     final double h = size.height;
     final double cx = w * (index % 2 == 0 ? 0.25 : 0.75);
     final double cy = h * (index < 2 ? 0.25 : 0.75);
-    final double r = math.min(w, h) * 0.23;
+    final double r = math.min(w, h) * 0.30;
 
     switch (index) {
       case 0: // Top-Left: 4-pointed shuriken/butterfly
@@ -3620,39 +3765,72 @@ class PinwheelClipper extends CustomClipper<Path> {
   PinwheelClipper({required this.index});
 
   @override
-  Path getClip(Size size) => getPetalPath(index, size);
+  Path getClip(Size size) {
+    if (index == 4) return getCenterCirclePath(size);
+    return getPetalPath(index, size);
+  }
 
-  /// Returns the kite/arrowhead petal path for the given index (0–3).
-  /// Shape: sharp inner tip at canvas CENTER → straight sides → wide rounded outer arc.
-  /// Each petal is a 90° rotation of the base (index 0 points UP).
+  static Path getCenterCirclePath(Size size) {
+    double w = size.width, h = size.height;
+    double cx = w * 0.5, cy = h * 0.5;
+    double r = math.min(w, h) * 0.20; // Increased center circle radius
+    return Path()..addOval(Rect.fromCircle(center: Offset(cx, cy), radius: r));
+  }
+
+  /// Returns 4 sweeping curved petals that perfectly tile the background.
   static Path getPetalPath(int index, Size size) {
     double w = size.width, h = size.height;
     double cx = w * 0.5, cy = h * 0.5;
 
-    // Base vane (points UP: index 0)
-    // Relative coordinates to center:
-    List<Offset> basePoints = [
-      const Offset(0.0, -0.13),   // Bottom middle tip
-      const Offset(0.35, -0.13),  // Inner bottom right
-      const Offset(0.18, -0.45),  // Outer top right
-      const Offset(-0.18, -0.45), // Outer top left
-    ];
+    // Relative to center coordinates
+    double swoopX = w * 0.35;
+    double swoopY = h * 0.35;
 
-    Path vane = Path();
-    for (int i = 0; i < basePoints.length; i++) {
-      double angle = index * math.pi / 2;
-      double px = basePoints[i].dx * w;
-      double py = basePoints[i].dy * h;
-      
-      // Rotate point (px, py) around (0,0) center
-      double rx = px * math.cos(angle) - py * math.sin(angle);
-      double ry = px * math.sin(angle) + py * math.cos(angle);
-      
-      if (i == 0) vane.moveTo(cx + rx, cy + ry);
-      else vane.lineTo(cx + rx, cy + ry);
+    Offset M0 = Offset(0, -h/2);
+    Offset M1 = Offset(w/2, 0);
+    Offset M2 = Offset(0, h/2);
+    Offset M3 = Offset(-w/2, 0);
+
+    Offset C0 = Offset(w/2, -h/2);
+    Offset C1 = Offset(w/2, h/2);
+    Offset C2 = Offset(-w/2, h/2);
+    Offset C3 = Offset(-w/2, -h/2);
+
+    Offset CP_M0 = Offset(-swoopX, -swoopY);
+    Offset CP_M1 = Offset(swoopX, -swoopY);
+    Offset CP_M2 = Offset(swoopX, swoopY);
+    Offset CP_M3 = Offset(-swoopX, swoopY);
+
+    Path p = Path();
+    p.moveTo(0, 0);
+
+    if (index == 0) { // Top-Right Petal
+      p.quadraticBezierTo(CP_M0.dx, CP_M0.dy, M0.dx, M0.dy);
+      p.lineTo(C0.dx, C0.dy);
+      p.lineTo(M1.dx, M1.dy);
+      p.quadraticBezierTo(CP_M1.dx, CP_M1.dy, 0, 0);
+    } else if (index == 1) { // Bottom-Right Petal
+      p.quadraticBezierTo(CP_M1.dx, CP_M1.dy, M1.dx, M1.dy);
+      p.lineTo(C1.dx, C1.dy);
+      p.lineTo(M2.dx, M2.dy);
+      p.quadraticBezierTo(CP_M2.dx, CP_M2.dy, 0, 0);
+    } else if (index == 2) { // Bottom-Left Petal
+      p.quadraticBezierTo(CP_M2.dx, CP_M2.dy, M2.dx, M2.dy);
+      p.lineTo(C2.dx, C2.dy);
+      p.lineTo(M3.dx, M3.dy);
+      p.quadraticBezierTo(CP_M3.dx, CP_M3.dy, 0, 0);
+    } else if (index == 3) { // Top-Left Petal
+      p.quadraticBezierTo(CP_M3.dx, CP_M3.dy, M3.dx, M3.dy);
+      p.lineTo(C3.dx, C3.dy);
+      p.lineTo(M0.dx, M0.dy);
+      p.quadraticBezierTo(CP_M0.dx, CP_M0.dy, 0, 0);
     }
-    vane.close();
-    return vane;
+    p.close();
+
+    Path rawPetal = p.shift(Offset(cx, cy));
+    Path centerCircle = getCenterCirclePath(size);
+
+    return Path.combine(PathOperation.difference, rawPetal, centerCircle);
   }
 
   @override
@@ -3677,6 +3855,7 @@ class PinwheelPainter extends CustomPainter {
     for (int i = 0; i < 4; i++) {
       canvas.drawPath(PinwheelClipper.getPetalPath(i, size), paint);
     }
+    canvas.drawPath(PinwheelClipper.getCenterCirclePath(size), paint);
   }
 
   @override
@@ -3938,4 +4117,670 @@ class AsymmetricArch4Painter extends CustomPainter {
       old.color != color || old.width != width;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// ARC TRIO — 3-image layout with two sweeping quarter-circle arc dividers
+//   Reference: two large arcs, one from top-left corner, one from bottom-right.
+//   Image 0: top-left region (inside Arc A's pie slice)
+//   Image 1: middle band (between the two arcs)
+//   Image 2: bottom-right region (inside Arc B's pie slice)
+// ═══════════════════════════════════════════════════════════════════════════════
 
+class ArcTrio3Clipper extends CustomClipper<Path> {
+  final int index;
+  ArcTrio3Clipper({required this.index});
+
+  // Arc A: centre at (0,0), large radius sweeping from top edge to left edge.
+  // Arc B: centre at (w,h), large radius sweeping from right edge to bottom edge.
+  static Path getPath(int index, Size size) {
+    final w = size.width;
+    final h = size.height;
+
+    // Radii tuned to match the reference image proportions.
+    final double rA = w * 0.75;
+    final double rB = w * 0.65;
+
+    // Arc A endpoints (centre 0,0):
+    //   top edge: (rA, 0)   left edge: (0, rA)
+    final double axTop = math.min(rA, w);
+    final double ayLeft = math.min(rA, h);
+
+    // Arc B endpoints (centre w,h):
+    //   right edge: (w, h - rB)   bottom edge: (w - rB, h)
+    final double byRight = math.max(h - rB, 0);
+    final double bxBottom = math.max(w - rB, 0);
+
+    final path = Path();
+
+    if (index == 0) {
+      // TOP-LEFT region: pie slice bounded by Arc A.
+      path.moveTo(0, 0);
+      path.lineTo(axTop, 0);
+      // Quarter-arc clockwise from (axTop, 0) to (0, ayLeft)
+      path.arcToPoint(
+        Offset(0, ayLeft),
+        radius: Radius.circular(rA),
+        clockwise: true,
+      );
+      path.close();
+    } else if (index == 1) {
+      // MIDDLE region: everything between Arc A and Arc B.
+      // Trace: top edge right of Arc A → right edge down to Arc B → Arc B to bottom edge →
+      //        bottom edge left → left edge up to Arc A → Arc A back to start.
+      path.moveTo(axTop, 0);
+      path.lineTo(w, 0);
+      path.lineTo(w, byRight);
+      // Arc B: counter-clockwise (short 90°) from (w, byRight) to (bxBottom, h)
+      path.arcToPoint(
+        Offset(bxBottom, h),
+        radius: Radius.circular(rB),
+        clockwise: false,
+      );
+      path.lineTo(0, h);
+      path.lineTo(0, ayLeft);
+      // Arc A: counter-clockwise (short 90°) from (0, ayLeft) to (axTop, 0)
+      path.arcToPoint(
+        Offset(axTop, 0),
+        radius: Radius.circular(rA),
+        clockwise: false,
+      );
+      path.close();
+    } else {
+      // BOTTOM-RIGHT region: pie slice bounded by Arc B.
+      path.moveTo(w, byRight);
+      path.lineTo(w, h);
+      path.lineTo(bxBottom, h);
+      // Quarter-arc counter-clockwise from (bxBottom, h) to (w, byRight)
+      path.arcToPoint(
+        Offset(w, byRight),
+        radius: Radius.circular(rB),
+        clockwise: true,
+      );
+      path.close();
+    }
+    return path;
+  }
+
+  @override
+  Path getClip(Size size) => getPath(index, size);
+
+  @override
+  bool shouldReclip(ArcTrio3Clipper old) => index != old.index;
+}
+
+class ArcTrio3Painter extends CustomPainter {
+  final Color color;
+  final double width;
+  ArcTrio3Painter({required this.color, required this.width});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (width < 0.5) return;
+    final w = size.width;
+    final h = size.height;
+
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = width
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final double rA = w * 0.75;
+    final double rB = w * 0.65;
+    final double axTop = math.min(rA, w);
+    final double ayLeft = math.min(rA, h);
+    final double byRight = math.max(h - rB, 0);
+    final double bxBottom = math.max(w - rB, 0);
+
+    // Draw Arc A (top-left corner arc)
+    final pathA = Path();
+    pathA.moveTo(axTop, 0);
+    pathA.arcToPoint(
+      Offset(0, ayLeft),
+      radius: Radius.circular(rA),
+      clockwise: true,
+    );
+    canvas.drawPath(pathA, paint);
+
+    // Draw Arc B (bottom-right corner arc)
+    final pathB = Path();
+    pathB.moveTo(w, byRight);
+    pathB.arcToPoint(
+      Offset(bxBottom, h),
+      radius: Radius.circular(rB),
+      clockwise: false,
+    );
+    canvas.drawPath(pathB, paint);
+  }
+
+  @override
+  bool shouldRepaint(ArcTrio3Painter old) =>
+      old.color != color || old.width != width;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SLANTED GALLERY — 4-image layout with a slanted vertical divider and 3 stacked right images
+//   Image 0: Large left image, slanted right edge (wider at top).
+//   Images 1, 2, 3: Three right-side images stacked vertically.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class SlantedGallery4Clipper extends CustomClipper<Path> {
+  final int index;
+  SlantedGallery4Clipper({required this.index});
+
+  static Path getPath(int index, Size size) {
+    final w = size.width;
+    final h = size.height;
+
+    // Configuration
+    const double xTop = 0.44;   // x-position at top (0.0 - 1.0)
+    const double xBottom = 0.34; // x-position at bottom (0.0 - 1.0)
+    final double gap = w * 0.025; // gap width
+    final double radius = w * 0.05; // corner radius
+
+    // Helper for x at a given y
+    double xAt(double y) => xTop * w + (xBottom * w - xTop * w) * (y / h);
+
+    final path = Path();
+
+    if (index == 0) {
+      // LEFT section
+      // We want to draw a rounded path for the left section.
+      // Top row: (gap, gap) to (xAt(gap) - gap/2, gap)
+      // Bottom row: (gap, h - gap) to (xAt(h - gap) - gap/2, h - gap)
+      double xt = xAt(gap) - gap / 2;
+      double xb = xAt(h - gap) - gap / 2;
+
+      path.moveTo(gap + radius, gap);
+      path.lineTo(xt - radius, gap);
+      path.quadraticBezierTo(xt, gap, xt - (xt - xb) * (radius / h), gap + radius);
+      path.lineTo(xb + (xt - xb) * (radius / h), h - gap - radius);
+      path.quadraticBezierTo(xb, h - gap, xb - radius, h - gap);
+      path.lineTo(gap + radius, h - gap);
+      path.quadraticBezierTo(gap, h - gap, gap, h - gap - radius);
+      path.lineTo(gap, gap + radius);
+      path.quadraticBezierTo(gap, gap, gap + radius, gap);
+      path.close();
+    } else {
+      // RIGHT sections (1, 2, 3)
+      int i = index - 1; // 0, 1, or 2
+      double yStart = (i / 3) * h + (i == 0 ? gap : gap / 2);
+      double yEnd = ((i + 1) / 3) * h - (i == 2 ? gap : gap / 2);
+
+      double xt = xAt(yStart) + gap / 2;
+      double xb = xAt(yEnd) + gap / 2;
+
+      path.moveTo(xt + radius, yStart);
+      path.lineTo(w - gap - radius, yStart);
+      path.quadraticBezierTo(w - gap, yStart, w - gap, yStart + radius);
+      path.lineTo(w - gap, yEnd - radius);
+      path.quadraticBezierTo(w - gap, yEnd, w - gap - radius, yEnd);
+      path.lineTo(xb + radius, yEnd);
+      path.quadraticBezierTo(xb, yEnd, xb + (xt - xb) * (radius / (yEnd - yStart)), yEnd - radius);
+      path.lineTo(xt - (xt - xb) * (radius / (yEnd - yStart)), yStart + radius);
+      path.quadraticBezierTo(xt, yStart, xt + radius, yStart);
+      path.close();
+    }
+    return path;
+  }
+
+  @override
+  Path getClip(Size size) => getPath(index, size);
+
+  @override
+  bool shouldReclip(SlantedGallery4Clipper old) => index != old.index;
+}
+
+class SlantedGallery4Painter extends CustomPainter {
+  final Color color;
+  final double width;
+  SlantedGallery4Painter({required this.color, required this.width});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (width < 0.5) return;
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = width
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    // Instead of drawing the "ideal" split lines, we'll draw the boundaries of each section
+    // to match the rounded-corners look in the reference image.
+    for (int i = 0; i < 4; i++) {
+      canvas.drawPath(SlantedGallery4Clipper.getPath(i, size), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(SlantedGallery4Painter old) =>
+      old.color != color || old.width != width;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ARTISTIC HANDS — 2-image layout with two stylized hands reaching toward each other
+//   Reference: two hands from opposite sides, some fingers bent, some open.
+//   Image 0: Clipped to the left hand silhouette.
+//   Image 1: Clipped to the right hand silhouette.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ARTISTIC HANDS — 2-image layout with two stylized hands interlocking
+//   Reference: One background image, and two hand silhouettes containing the 2nd image.
+//   Orchestration: Hands are placed diagonally (bottom-left and top-right).
+//   Image 0: Background (Everything except the hand shapes).
+//   Image 1: Inside the two hand shapes.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class ArtisticHands2Clipper extends CustomClipper<Path> {
+  final int index;
+  ArtisticHands2Clipper({required this.index});
+
+  /// Returns the combined path of both interlocking hands.
+  static Path getHandsPath(Size size) {
+    final w = size.width;
+    final h = size.height;
+    final path = Path();
+
+    // --- HAND 1 (From Bottom-Left / Grey Sleeve side) ---
+    // Starting at the bottom-left corner area (the wrist/sleeve)
+    path.moveTo(w * 0.0, h * 0.70); // Wrist start on left edge
+    path.lineTo(w * 0.1, h * 1.0); // Wrist end on bottom edge
+    path.lineTo(w * 0.2, h * 1.0); // Sleeve width
+    
+    // Palm and thumb reaching UP and RIGHT
+    path.cubicTo(w * 0.25, h * 0.85, w * 0.30, h * 0.60, w * 0.40, h * 0.45); // Palm up
+    
+    // THUMB (Hand 1) - Pointing Up-Right
+    path.cubicTo(w * 0.45, h * 0.35, w * 0.55, h * 0.25, w * 0.65, h * 0.35); 
+    path.cubicTo(w * 0.60, h * 0.40, w * 0.50, h * 0.45, w * 0.45, h * 0.50);
+
+    // FINGERS (Hand 1) - Interlacing
+    // Finger 1 (Index)
+    path.cubicTo(w * 0.55, h * 0.50, w * 0.70, h * 0.55, w * 0.85, h * 0.60);
+    path.cubicTo(w * 0.80, h * 0.65, w * 0.65, h * 0.68, w * 0.55, h * 0.65);
+    
+    // Finger 2 (Middle)
+    path.cubicTo(w * 0.60, h * 0.70, w * 0.75, h * 0.75, w * 0.80, h * 0.85);
+    path.cubicTo(w * 0.70, h * 0.90, w * 0.60, h * 0.85, w * 0.50, h * 0.80);
+    
+    // Return to sleeve
+    path.cubicTo(w * 0.35, h * 0.75, w * 0.20, h * 0.65, w * 0.0, h * 0.70);
+    path.close();
+
+    // --- HAND 2 (From Top-Right side) ---
+    final path2 = Path();
+    path2.moveTo(w * 0.75, h * 0.0); // Wrist start on top edge
+    path2.lineTo(w * 1.0, h * 0.0); // Top-right corner
+    path2.lineTo(w * 1.0, h * 0.30); // Wrist end on right edge
+    
+    // Palm and thumb reaching DOWN and LEFT
+    path2.cubicTo(w * 0.85, h * 0.35, w * 0.75, h * 0.45, w * 0.60, h * 0.50); // Palm down
+    
+    // THUMB (Hand 2) - Pointing Down-Left
+    path2.cubicTo(w * 0.50, h * 0.55, w * 0.40, h * 0.65, w * 0.35, h * 0.55);
+    path2.cubicTo(w * 0.40, h * 0.50, w * 0.50, h * 0.45, w * 0.55, h * 0.40);
+
+    // FINGERS (Hand 2) - Interlacing
+    // Finger 1 (Index) - Pointing Left/Up
+    path2.cubicTo(w * 0.45, h * 0.35, w * 0.30, h * 0.30, w * 0.20, h * 0.35);
+    path2.cubicTo(w * 0.25, h * 0.40, w * 0.35, h * 0.45, w * 0.45, h * 0.48);
+    
+    // Finger 2 (Middle)
+    path2.cubicTo(w * 0.35, h * 0.55, w * 0.25, h * 0.65, w * 0.30, h * 0.75);
+    path2.cubicTo(w * 0.40, h * 0.75, w * 0.50, h * 0.65, w * 0.55, h * 0.60);
+
+    // Return to wrist
+    path2.cubicTo(w * 0.75, h * 0.55, w * 0.80, h * 0.30, w * 0.75, h * 0.0);
+    path2.close();
+
+    path.addPath(path2, Offset.zero);
+    return path;
+  }
+
+  @override
+  Path getClip(Size size) {
+    final handsPath = getHandsPath(size);
+    if (index == 1) return handsPath;
+
+    // Index 0: Background (Everything except the hands)
+    final bgPath = Path();
+    bgPath.addRect(Rect.fromLTWH(0, 0, size.width, size.height));
+    return Path.combine(PathOperation.difference, bgPath, handsPath);
+  }
+
+  @override
+  bool shouldReclip(ArtisticHands2Clipper old) => index != old.index;
+}
+
+class ArtisticHands2Painter extends CustomPainter {
+  final Color color;
+  final double width;
+  ArtisticHands2Painter({required this.color, required this.width});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (width < 0.5) return;
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = width
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    canvas.drawPath(ArtisticHands2Clipper.getHandsPath(size), paint);
+  }
+
+  @override
+  bool shouldRepaint(ArtisticHands2Painter old) =>
+      old.color != color || old.width != width;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INTERLOCKING LOCKS — 2-image layout with two stylized padlocks
+//   Image 0: Clipped to the left padlock silhouette.
+//   Image 1: Clipped to the right padlock silhouette.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class InterlockingLocks2Clipper extends CustomClipper<Path> {
+  final int index;
+  InterlockingLocks2Clipper({required this.index});
+
+  /// Returns the stylized path for one of the two padlocks.
+  /// isLeft: true for the left lock, false for the right lock.
+  static Path _getLockPath(Size size, bool isLeft) {
+    final w = size.width;
+    final h = size.height;
+    final path = Path();
+
+    // Center of body
+    final cx = isLeft ? w * 0.35 : w * 0.65;
+    final cy = h * 0.65;
+    final bw = w * 0.38; // body width
+    final bh = h * 0.35; // body height
+    
+    // 1. Draw the Body (Rounded Rect)
+    final bodyRect = Rect.fromCenter(center: Offset(cx, cy), width: bw, height: bh);
+    path.addRRect(RRect.fromRectAndRadius(bodyRect, Radius.circular(bw * 0.2)));
+    
+    // 2. Draw the Shackle (closed loop)
+    final sw = bw * 0.7; // shackle width
+    final sh = h * 0.45; // shackle height
+    final sy = cy - bh * 0.5; // start from top of body
+    
+    final shacklePath = Path();
+    shacklePath.moveTo(cx - sw * 0.5, sy);
+    shacklePath.lineTo(cx - sw * 0.5, sy - sh * 0.6);
+    shacklePath.arcToPoint(
+      Offset(cx + sw * 0.5, sy - sh * 0.6),
+      radius: Radius.circular(sw * 0.5),
+    );
+    shacklePath.lineTo(cx + sw * 0.5, sy);
+    
+    // Outer outline of shackle
+    final outerPath = Path();
+    outerPath.moveTo(cx - sw * 0.5 - 2, sy);
+    outerPath.lineTo(cx - sw * 0.5 - 2, sy - sh * 0.6);
+    outerPath.arcToPoint(
+      Offset(cx + sw * 0.5 + 2, sy - sh * 0.6),
+      radius: Radius.circular(sw * 0.5 + 2),
+    );
+    outerPath.lineTo(cx + sw * 0.5 + 2, sy);
+    
+    // Create a closed path for the shackle by tracing back
+    final combinedShackle = Path();
+    combinedShackle.moveTo(cx - sw * 0.5, sy);
+    combinedShackle.lineTo(cx - sw * 0.5, sy - sh * 0.6);
+    combinedShackle.arcToPoint(
+      Offset(cx + sw * 0.5, sy - sh * 0.6),
+      radius: Radius.circular(sw * 0.5),
+    );
+    combinedShackle.lineTo(cx + sw * 0.5, sy);
+    combinedShackle.lineTo(cx + sw * 0.35, sy); // inner top point
+    combinedShackle.lineTo(cx + sw * 0.35, sy - sh * 0.55);
+    combinedShackle.arcToPoint(
+      Offset(cx - sw * 0.35, sy - sh * 0.55),
+      radius: Radius.circular(sw * 0.35),
+      clockwise: false,
+    );
+    combinedShackle.lineTo(cx - sw * 0.35, sy);
+    combinedShackle.close();
+    
+    path.addPath(combinedShackle, Offset.zero);
+
+    // Apply rotation for the entire lock
+    final rotation = isLeft ? 0.15 : -0.15;
+    final Matrix4 matrix = Matrix4.identity()
+      ..translate(cx, cy)
+      ..rotateZ(rotation)
+      ..translate(-cx, -cy);
+    
+    return path.transform(matrix.storage);
+  }
+
+  @override
+  Path getClip(Size size) {
+    return _getLockPath(size, index == 0);
+  }
+
+  @override
+  bool shouldReclip(InterlockingLocks2Clipper old) => index != old.index;
+}
+
+class InterlockingLocks2Painter extends CustomPainter {
+  final Color color;
+  final double width;
+  InterlockingLocks2Painter({required this.color, required this.width});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (width < 0.5) return;
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = width
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    canvas.drawPath(InterlockingLocks2Clipper._getLockPath(size, true), paint);
+    canvas.drawPath(InterlockingLocks2Clipper._getLockPath(size, false), paint);
+  }
+
+  @override
+  bool shouldRepaint(InterlockingLocks2Painter old) =>
+      old.color != color || old.width != width;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SLANTED SIX — 6-image layout with staggered slanted columns
+//   3 vertical slanted columns, each split into 2 rows (Top/Bottom).
+//   Image indexing:
+//     0: Col 1 Top, 1: Col 1 Bottom
+//     2: Col 2 Top, 3: Col 2 Bottom
+//     4: Col 3 Top, 5: Col 3 Bottom
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class SlantedSixClipper extends CustomClipper<Path> {
+  final int index;
+  final double gap;
+  final double radius;
+
+  SlantedSixClipper({required this.index, this.gap = 8.0, this.radius = 16.0});
+
+  static List<Path> _getPaths(Size size, double gap, double radius) {
+    final w = size.width;
+    final h = size.height;
+    final List<Path> paths = [];
+
+    // Vertical slanted dividers (Top x, Bottom x)
+    final v1 = [0.36 * w, 0.30 * w];
+    final v2 = [0.69 * w, 0.63 * w];
+
+    // Horizontal slanted dividers (y at v0, y at v1, y at v2, y at v3)
+    final hMid = [0.55 * h, 0.48 * h, 0.58 * h, 0.50 * h];
+
+    Path createPart(List<double> tl, List<double> tr, List<double> bl, List<double> br) {
+      final path = Path();
+      // Apply gap inset
+      // For simplicity, we'll just draw the quad and use some inset logic
+      // In a real premium app, we calculate the normal insets.
+      
+      // Points for the segment
+      final p1 = Offset(tl[0] + gap, tl[1] + gap);
+      final p2 = Offset(tr[0] - gap, tr[1] + gap);
+      final p3 = Offset(br[0] - gap, br[1] - gap);
+      final p4 = Offset(bl[0] + gap, bl[1] - gap);
+
+      path.moveTo(p1.dx + radius, p1.dy);
+      path.lineTo(p2.dx - radius, p2.dy);
+      path.quadraticBezierTo(p2.dx, p2.dy, p2.dx, p2.dy + radius);
+      path.lineTo(p3.dx, p3.dy - radius);
+      path.quadraticBezierTo(p3.dx, p3.dy, p3.dx - radius, p3.dy);
+      path.lineTo(p4.dx + radius, p4.dy);
+      path.quadraticBezierTo(p4.dx, p4.dy, p4.dx, p4.dy - radius);
+      path.lineTo(p1.dx, p1.dy + radius);
+      path.quadraticBezierTo(p1.dx, p1.dy, p1.dx + radius, p1.dy);
+      path.close();
+      return path;
+    }
+
+    // Col 1 Top
+    paths.add(createPart([0, 0], [v1[0], 0], [0, hMid[0]], [v1[0], hMid[1]]));
+    // Col 1 Bottom
+    paths.add(createPart([0, hMid[0]], [v1[1], hMid[1]], [0, h], [v1[1], h]));
+
+    // Col 2 Top
+    paths.add(createPart([v1[0], 0], [v2[0], 0], [v1[0], hMid[1]], [v2[0], hMid[2]]));
+    // Col 2 Bottom
+    paths.add(createPart([v1[1], hMid[1]], [v2[1], hMid[2]], [v1[1], h], [v2[1], h]));
+
+    // Col 3 Top
+    paths.add(createPart([v2[0], 0], [w, 0], [v2[0], hMid[2]], [w, hMid[3]]));
+    // Col 3 Bottom
+    paths.add(createPart([v2[1], hMid[2]], [w, hMid[3]], [v2[1], h], [w, h]));
+
+    return paths;
+  }
+
+  @override
+  Path getClip(Size size) {
+    final paths = _getPaths(size, gap / 2, radius);
+    if (index >= 0 && index < paths.length) {
+      return paths[index];
+    }
+    return Path()..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
+  }
+
+  @override
+  bool shouldReclip(SlantedSixClipper old) =>
+      old.index != index || old.gap != gap || old.radius != radius;
+}
+
+class SlantedSixPainter extends CustomPainter {
+  final Color color;
+  final double width;
+  final double gap;
+  final double radius;
+
+  SlantedSixPainter({
+    required this.color,
+    required this.width,
+    this.gap = 8.0,
+    this.radius = 16.0,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = width
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final paths = SlantedSixClipper._getPaths(size, gap / 2, radius);
+    for (final path in paths) {
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(SlantedSixPainter old) =>
+      old.color != color || old.width != width || old.gap != gap || old.radius != radius;
+}
+
+class DiagonalStarClipper extends CustomClipper<Path> {
+  final int index;
+  DiagonalStarClipper({required this.index});
+
+  static Path getPath(int index, Size size) {
+    double w = size.width, h = size.height;
+    Path path = Path();
+    
+    switch (index) {
+      case 0:
+        path.moveTo(0, 0);
+        path.lineTo(w, 0);
+        path.lineTo(w / 2, h / 2);
+        break;
+      case 1:
+        path.moveTo(w, 0);
+        path.lineTo(w, h);
+        path.lineTo(w / 2, h / 2);
+        break;
+      case 2:
+        path.moveTo(w, h);
+        path.lineTo(0, h);
+        path.lineTo(w / 2, h / 2);
+        break;
+      case 3:
+        path.moveTo(0, h);
+        path.lineTo(0, 0);
+        path.lineTo(w / 2, h / 2);
+        break;
+      default:
+        path.addRect(Rect.fromLTWH(0, 0, w, h));
+    }
+    path.close();
+    return path;
+  }
+
+  @override
+  Path getClip(Size size) => getPath(index, size);
+
+  @override
+  bool shouldReclip(DiagonalStarClipper old) => old.index != index;
+}
+
+class DiagonalStarPainter extends CustomPainter {
+  final Color color;
+  final double width;
+  DiagonalStarPainter({required this.color, required this.width});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (width < 0.5) return;
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = width
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.square;
+
+    canvas.drawLine(Offset(0, 0), Offset(size.width, size.height), paint);
+    canvas.drawLine(Offset(size.width, 0), Offset(0, size.height), paint);
+
+    // Add outer border with double thickness (so the visible half matches inner lines)
+    final outerPaint = Paint()
+      ..color = color
+      ..strokeWidth = width * 2
+      ..style = PaintingStyle.stroke
+      ..strokeJoin = StrokeJoin.miter;
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), outerPaint);
+  }
+
+  @override
+  bool shouldRepaint(DiagonalStarPainter old) => old.color != color || old.width != width;
+}

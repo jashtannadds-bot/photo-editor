@@ -403,6 +403,20 @@ final List<CollageLayoutDef> layouts2 = [
     clipType: 'leaf_fusion',
     imageCount: 2,
   ),
+  const CollageLayoutDef(
+    name: 'Artistic Hands',
+    icon: Icons.gesture_rounded,
+    isClipBased: true,
+    clipType: 'artistic_hands_2',
+    imageCount: 2,
+  ),
+  const CollageLayoutDef(
+    name: 'Interlocking Locks',
+    icon: Icons.lock_outline_rounded,
+    isClipBased: true,
+    clipType: 'interlocking_locks_2',
+    imageCount: 2,
+  ),
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -846,6 +860,13 @@ final List<CollageLayoutDef> layouts3 = [
     imageCount: 3,
   ),
   const CollageLayoutDef(
+    name: 'Arc Trio',
+    icon: Icons.incomplete_circle_rounded,
+    isClipBased: true,
+    clipType: 'arc_trio',
+    imageCount: 3,
+  ),
+  const CollageLayoutDef(
     name: 'Christmas Magic',
     icon: Icons.park_rounded,
     isClipBased: true,
@@ -893,6 +914,13 @@ final List<CollageLayoutDef> layouts4 = [
     imageCount: 4,
   ),
   const CollageLayoutDef(
+    name: 'Slanted Gallery',
+    icon: Icons.view_sidebar_rounded,
+    isClipBased: true,
+    clipType: 'slanted_gallery_4',
+    imageCount: 4,
+  ),
+  const CollageLayoutDef(
     name: 'Diamond Grid',
     icon: Icons.grid_view_rounded,
     isClipBased: true,
@@ -904,13 +932,6 @@ final List<CollageLayoutDef> layouts4 = [
     icon: Icons.movie_filter_rounded,
     isClipBased: true,
     clipType: 'slanted_film_4',
-    imageCount: 4,
-  ),
-  const CollageLayoutDef(
-    name: 'Pinwheel',
-    icon: Icons.wind_power_rounded,
-    isClipBased: true,
-    clipType: 'pinwheel_4',
     imageCount: 4,
   ),
   const CollageLayoutDef(
@@ -1055,10 +1076,10 @@ final List<CollageLayoutDef> layouts4 = [
     icon: Icons.add_box_rounded,
     imageCount: 4,
     cells: [
-      CellRect(0.0, 0.0, 0.45, 0.5),
-      CellRect(0.55, 0.0, 0.45, 0.5),
-      CellRect(0.0, 0.5, 0.45, 0.5),
-      CellRect(0.55, 0.5, 0.45, 0.5),
+      CellRect(0.0, 0.0, 0.45, 0.45),
+      CellRect(0.55, 0.0, 0.45, 0.45),
+      CellRect(0.0, 0.55, 0.45, 0.45),
+      CellRect(0.55, 0.55, 0.45, 0.45),
     ],
   ),
   // 11. Tall left pair + wide right pair
@@ -1194,10 +1215,10 @@ final List<CollageLayoutDef> layouts4 = [
     icon: Icons.grid_view_rounded,
     imageCount: 4,
     cells: [
-      CellRect(0.0, 0.0, 0.6, 0.6),
-      CellRect(0.6, 0.0, 0.4, 0.4),
-      CellRect(0.0, 0.6, 0.4, 0.4),
-      CellRect(0.4, 0.4, 0.6, 0.6),
+      CellRect(0.0, 0.0, 0.4, 0.4),
+      CellRect(0.4, 0.0, 0.6, 0.6),
+      CellRect(0.0, 0.4, 0.4, 0.6),
+      CellRect(0.4, 0.6, 0.6, 0.4),
     ],
   ),
   const CollageLayoutDef(
@@ -1233,29 +1254,19 @@ final List<CollageLayoutDef> layouts4 = [
       CellRect(0.67, 0.4, 0.33, 0.6),
     ],
   ),
-  const CollageLayoutDef(
-    name: 'Crossroads',
-    icon: Icons.add_rounded,
-    imageCount: 4,
-    cells: [
-      CellRect(0.0, 0.0, 0.5, 0.5),
-      CellRect(0.5, 0.0, 0.5, 0.5),
-      CellRect(0.0, 0.5, 0.5, 0.5),
-      CellRect(0.5, 0.5, 0.5, 0.5),
-    ],
-  ),
+
   const CollageLayoutDef(
     name: 'Diagonal Star',
     icon: Icons.filter_tilt_shift_rounded,
     isClipBased: true,
-    clipType: 'diagonal',
+    clipType: 'diagonal_star',
     imageCount: 4,
   ),
   const CollageLayoutDef(
     name: 'Slanted Rows',
     icon: Icons.text_rotation_down_rounded,
     isClipBased: true,
-    clipType: 'slanted',
+    clipType: 'slanted_rows',
     imageCount: 4,
   ),
   const CollageLayoutDef(
@@ -1316,6 +1327,13 @@ final List<CollageLayoutDef> layouts4 = [
 // ═══════════════════════════════════════════════════════════════════════════════
 
 final List<CollageLayoutDef> layouts5 = [
+  const CollageLayoutDef(
+    name: 'Pinwheel',
+    icon: Icons.wind_power_rounded,
+    isClipBased: true,
+    clipType: 'pinwheel_5',
+    imageCount: 5,
+  ),
   // 1. Classic 2-top + 3-bottom
   const CollageLayoutDef(
     name: 'Classic Five',
@@ -1734,6 +1752,17 @@ final List<CollageLayoutDef> layouts5 = [
   ),
 ];
 
+
+final List<CollageLayoutDef> layouts6 = [
+  const CollageLayoutDef(
+    name: 'Slanted Six',
+    icon: Icons.grid_view_rounded,
+    isClipBased: true,
+    clipType: 'slanted_6',
+    imageCount: 6,
+  ),
+];
+
 /// Returns all layouts for a given image count.
 List<CollageLayoutDef> getLayoutsForCount(int imageCount) {
   switch (imageCount) {
@@ -1745,6 +1774,8 @@ List<CollageLayoutDef> getLayoutsForCount(int imageCount) {
       return layouts4;
     case 5:
       return layouts5;
+    case 6:
+      return layouts6;
     default:
       return layouts5;
   }

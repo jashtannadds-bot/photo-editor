@@ -44,7 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (pickedFiles.isEmpty) return;
 
-    if (pickedFiles.length > 5) {
+    if (pickedFiles.length > 6) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
