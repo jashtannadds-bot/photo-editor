@@ -1490,19 +1490,7 @@ final List<CollageLayoutDef> layouts5 = [
       CellRect(0.75, 0.0, 0.25, 0.4),
     ],
   ),
-  // 13. Staircase
-  const CollageLayoutDef(
-    name: 'Staircase',
-    icon: Icons.stairs_rounded,
-    imageCount: 5,
-    cells: [
-      CellRect(0.0, 0.0, 0.4, 0.25),
-      CellRect(0.1, 0.2, 0.4, 0.25),
-      CellRect(0.2, 0.4, 0.4, 0.25),
-      CellRect(0.3, 0.6, 0.4, 0.25),
-      CellRect(0.5, 0.8, 0.5, 0.2),
-    ],
-  ),
+
   // 14. Big center row + 2 top + 2 bottom
   const CollageLayoutDef(
     name: 'Center Band',
@@ -1560,13 +1548,8 @@ final List<CollageLayoutDef> layouts5 = [
     name: 'Puzzle',
     icon: Icons.extension_rounded,
     imageCount: 5,
-    cells: [
-      CellRect(0.0, 0.0, 0.4, 0.4),
-      CellRect(0.4, 0.0, 0.6, 0.3),
-      CellRect(0.0, 0.4, 0.35, 0.6),
-      CellRect(0.35, 0.3, 0.35, 0.4),
-      CellRect(0.35, 0.7, 0.65, 0.3),
-    ],
+    isClipBased: true,
+    clipType: 'puzzle_5',
   ),
   // 19. Frame layout: 4 border tiles + 1 center
   const CollageLayoutDef(
@@ -1629,9 +1612,14 @@ final List<CollageLayoutDef> layouts5 = [
   const CollageLayoutDef(
     name: 'Staircase',
     icon: Icons.stairs_rounded,
-    isClipBased: true,
-    clipType: 'staircase_5',
     imageCount: 5,
+    cells: [
+      CellRect(0.0,  0.0,   0.3,  1.0),   // Full left pillar
+      CellRect(0.3,  0.0,   0.35, 0.65),  // Middle stepped pillar
+      CellRect(0.65, 0.0,   0.35, 0.325), // Top small step
+      CellRect(0.65, 0.325, 0.35, 0.325), // Middle small step
+      CellRect(0.3,  0.65,  0.7,  0.35),  // Large bottom base
+    ],
   ),
   const CollageLayoutDef(
     name: 'DAD Heart',

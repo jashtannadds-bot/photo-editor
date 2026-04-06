@@ -1102,7 +1102,100 @@ class HoneycombPainter extends CustomPainter {
   bool shouldRepaint(HoneycombPainter old) => old.color != color || old.width != width;
 }
 
+class Crest5Clipper extends CustomClipper<Path> {
+  final int index;
+  Crest5Clipper({required this.index});
+
+  static Path getShieldPath(Size size) {
+    final double w = size.width;
+    final double h = size.height;
+    final double cx = w / 2;
+    final double cy = h / 2;
+    final double sw = w * 0.44; // Shield width
+    final double sh = h * 0.52; // Shield height
+
+    // Shield path (classic crest shape)
+    Path path = Path();
+    path.moveTo(cx, cy - sh/2); // Top-center point
+    // Top-right curve
+    path.quadraticBezierTo(cx + sw/2, cy - sh/2, cx + sw/2, cy); 
+    // Bottom-right curve/point
+    path.quadraticBezierTo(cx + sw/2, cy + sh/3, cx, cy + sh/2);
+    // Bottom-left curve/point
+    path.quadraticBezierTo(cx - sw/2, cy + sh/3, cx - sw/2, cy);
+    // Top-left curve
+    path.quadraticBezierTo(cx - sw/2, cy - sh/2, cx, cy - sh/2);
+    path.close();
+    return path;
+  }
+
+  @override
+  Path getClip(Size size) {
+    final double w = size.width;
+    final double h = size.height;
+
+    // Index 4 is the central crest shield
+    if (index == 4) return getShieldPath(size);
+
+    // Indices 0-3 are the quadrants, clipped against the shield
+    Path quadrant = Path();
+    switch (index) {
+      case 0: quadrant.addRect(Rect.fromLTWH(0, 0, w/2, h/2)); break;      // Top-Left
+      case 1: quadrant.addRect(Rect.fromLTWH(w/2, 0, w/2, h/2)); break;    // Top-Right
+      case 2: quadrant.addRect(Rect.fromLTWH(0, h/2, w/2, h/2)); break;    // Bottom-Left
+      case 3: quadrant.addRect(Rect.fromLTWH(w/2, h/2, w/2, h/2)); break;  // Bottom-Right
+    }
+
+    return Path.combine(PathOperation.difference, quadrant, getShieldPath(size));
+  }
+
+  @override
+  bool shouldReclip(Crest5Clipper old) => old.index != index;
+}
+
+class Crest5Painter extends CustomPainter {
+  final Color color;
+  final double width;
+  Crest5Painter({required this.color, required this.width});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (width < 0.5) return;
+    final double w = size.width;
+    final double h = size.height;
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = width
+      ..style = PaintingStyle.stroke
+      ..strokeJoin = StrokeJoin.round
+      ..strokeCap = StrokeCap.round;
+
+    // 1. Draw the central crest shape
+    canvas.drawPath(Crest5Clipper.getShieldPath(size), paint);
+
+    // 2. Draw the quadrant dividers, clipped so they don't cross the shield
+    // This provides the "stitched" professional look seen in other layouts.
+    canvas.save();
+    canvas.clipPath(Path.combine(
+      PathOperation.difference,
+      Path()..addRect(Rect.fromLTWH(0, 0, w, h)),
+      Crest5Clipper.getShieldPath(size),
+    ));
+
+    // Vertical divider
+    canvas.drawLine(Offset(w/2, 0), Offset(w/2, h), paint);
+    // Horizontal divider
+    canvas.drawLine(Offset(0, h/2), Offset(w, h/2), paint);
+    
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(Crest5Painter old) => old.color != color || old.width != width;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
+
 // PINTERESTY / ORGANIC CLIPPERS
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -3068,6 +3161,94 @@ class PuzzleTrioPainter extends CustomPainter {
       old.color != color || old.width != width;
 }
 
+class Puzzle5Clipper extends CustomClipper<Path> {
+  final int index;
+  Puzzle5Clipper({required this.index});
+
+  @override
+  Path getClip(Size size) {
+    double w = size.width;
+    double h = size.height;
+    double cw = w / 3;
+    double ch = h / 3;
+    double tr = w * 0.055; // Tab radius
+
+    // Helper for bulbous puzzle piece
+    Path buildPiece(Rect rect, {int t = 0, int r = 0, int b = 0, int l = 0}) {
+      Path path = Path()..addRect(rect);
+      // Tabs (Convex)
+      if (t == 1) path = Path.combine(PathOperation.union, path, Path()..addOval(Rect.fromCircle(center: Offset(rect.center.dx, rect.top), radius: tr)));
+      if (r == 1) path = Path.combine(PathOperation.union, path, Path()..addOval(Rect.fromCircle(center: Offset(rect.right, rect.center.dy), radius: tr)));
+      if (b == 1) path = Path.combine(PathOperation.union, path, Path()..addOval(Rect.fromCircle(center: Offset(rect.center.dx, rect.bottom), radius: tr)));
+      if (l == 1) path = Path.combine(PathOperation.union, path, Path()..addOval(Rect.fromCircle(center: Offset(rect.left, rect.center.dy), radius: tr)));
+      // Blanks (Concave)
+      if (t == -1) path = Path.combine(PathOperation.difference, path, Path()..addOval(Rect.fromCircle(center: Offset(rect.center.dx, rect.top), radius: tr)));
+      if (r == -1) path = Path.combine(PathOperation.difference, path, Path()..addOval(Rect.fromCircle(center: Offset(rect.right, rect.center.dy), radius: tr)));
+      if (b == -1) path = Path.combine(PathOperation.difference, path, Path()..addOval(Rect.fromCircle(center: Offset(rect.center.dx, rect.bottom), radius: tr)));
+      if (l == -1) path = Path.combine(PathOperation.difference, path, Path()..addOval(Rect.fromCircle(center: Offset(rect.left, rect.center.dy), radius: tr)));
+      return path;
+    }
+
+    // Grid Layout (Virtual 3x3):
+    // [0][0][1]
+    // [2][3][3]
+    // [2][4][4]
+
+    if (index == 0) {
+      // Piece 0: Top-Left + Top-Mid (Horizontal)
+      Path p1 = buildPiece(Rect.fromLTWH(0, 0, cw, ch), r: 1, b: 1); // TL pieza
+      Path p2 = buildPiece(Rect.fromLTWH(cw, 0, cw, ch), l: -1, r: -1, b: 1); // TM pieza
+      return Path.combine(PathOperation.union, p1, p2);
+    } else if (index == 1) {
+      // Piece 1: Top-Right
+      return buildPiece(Rect.fromLTWH(cw * 2, 0, cw, ch), l: 1, b: -1);
+    } else if (index == 2) {
+      // Piece 2: Mid-Left + Bot-Left (Vertical)
+      Path p1 = buildPiece(Rect.fromLTWH(0, ch, cw, ch), t: -1, r: 1, b: 1);
+      Path p2 = buildPiece(Rect.fromLTWH(0, ch * 2, cw, ch), t: -1, r: 1);
+      return Path.combine(PathOperation.union, p1, p2);
+    } else if (index == 3) {
+      // Piece 3: Mid-Mid + Mid-Right
+      Path p1 = buildPiece(Rect.fromLTWH(cw, ch, cw, ch), t: -1, l: -1, r: 1, b: 1);
+      Path p2 = buildPiece(Rect.fromLTWH(cw * 2, ch, cw, ch), t: 1, l: -1, b: -1);
+      return Path.combine(PathOperation.union, p1, p2);
+    } else {
+      // Piece 4: Bot-Mid + Bot-Right
+      Path p1 = buildPiece(Rect.fromLTWH(cw, ch * 2, cw, ch), t: -1, l: -1, r: 1);
+      Path p2 = buildPiece(Rect.fromLTWH(cw * 2, ch * 2, cw, ch), t: 1, l: -1);
+      return Path.combine(PathOperation.union, p1, p2);
+    }
+  }
+
+  @override
+  bool shouldReclip(Puzzle5Clipper oldClipper) => oldClipper.index != index;
+}
+
+class Puzzle5Painter extends CustomPainter {
+  final Color color;
+  final double width;
+  Puzzle5Painter({required this.color, required this.width});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (width < 0.5) return;
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = width
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    for (int i = 0; i < 5; i++) {
+      canvas.drawPath(Puzzle5Clipper(index: i).getClip(size), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(Puzzle5Painter old) =>
+      old.color != color || old.width != width;
+}
+
 class CatHeartsClipper extends CustomClipper<Path> {
   final int index;
   CatHeartsClipper({required this.index});
@@ -3640,64 +3821,7 @@ class StarBurst5Painter extends CustomPainter {
 //   H1: y=0.4, x=0 → x=1/3       (between img0 and img1)
 //   H2: y=0.6, x=1/3 → x=2/3     (between img2 and img3)
 // ─────────────────────────────────────────────────────────────────────────────
-class StaircaseClipper extends CustomClipper<Path> {
-  final int index;
-  StaircaseClipper({required this.index});
 
-  static Rect getCell(int index, Size size) {
-    final w = size.width, h = size.height;
-    const c1 = 1 / 3, c2 = 2 / 3;
-    const r1 = 0.40, r2 = 0.60;
-    switch (index) {
-      case 0: return Rect.fromLTWH(0,    0,    w * c1,        h * r1);
-      case 1: return Rect.fromLTWH(0,    h*r1, w * c1,        h * (1 - r1));
-      case 2: return Rect.fromLTWH(w*c1, 0,    w * (c2 - c1), h * r2);
-      case 3: return Rect.fromLTWH(w*c1, h*r2, w * (c2 - c1), h * (1 - r2));
-      case 4: return Rect.fromLTWH(w*c2, 0,    w * (1 - c2),  h);
-      default: return Rect.zero;
-    }
-  }
-
-  @override
-  Path getClip(Size size) => Path()..addRect(getCell(index, size));
-
-  @override
-  bool shouldReclip(StaircaseClipper old) => old.index != index;
-}
-
-class StaircasePainter extends CustomPainter {
-  final Color color;
-  final double width;
-  StaircasePainter({required this.color, required this.width});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (width < 0.5) return;
-    final p = Paint()
-      ..color = color
-      ..strokeWidth = width
-      ..strokeCap = StrokeCap.square
-      ..style = PaintingStyle.stroke;
-
-    final w = size.width, h = size.height;
-    const c1 = 1 / 3, c2 = 2 / 3;
-    const r1 = 0.40, r2 = 0.60;
-
-    // Draw only the 4 internal seam lines — each drawn exactly once
-    // V1: full-height vertical at x = c1
-    canvas.drawLine(Offset(w * c1, 0), Offset(w * c1, h), p);
-    // V2: full-height vertical at x = c2
-    canvas.drawLine(Offset(w * c2, 0), Offset(w * c2, h), p);
-    // H1: horizontal at y = r1 for left column only
-    canvas.drawLine(Offset(0, h * r1), Offset(w * c1, h * r1), p);
-    // H2: horizontal at y = r2 for middle column only
-    canvas.drawLine(Offset(w * c1, h * r2), Offset(w * c2, h * r2), p);
-  }
-
-  @override
-  bool shouldRepaint(StaircasePainter old) =>
-      old.color != color || old.width != width;
-}
 
 class MonthClipper extends CustomClipper<Path> {
 

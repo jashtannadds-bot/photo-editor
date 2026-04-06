@@ -471,7 +471,7 @@ class _DynamicCollageEditorState extends State<DynamicCollageEditor>
         clipper = HoneycombClipper(index: index);
         break;
       case 'crest5':
-        clipper = HoneycombClipper(index: index); // Use honeycomb as a base for crest
+        clipper = Crest5Clipper(index: index);
         break;
       case 'slanted':
         clipper = SlantedClipper(slant: 0.15, index: index);
@@ -601,9 +601,10 @@ class _DynamicCollageEditorState extends State<DynamicCollageEditor>
       case 'diagonal_heart':
         clipper = DiagonalHeartClipper(index: index);
         break;
-      case 'staircase_5':
-        clipper = StaircaseClipper(index: index);
+      case 'puzzle_5':
+        clipper = Puzzle5Clipper(index: index);
         break;
+
       case 'year_grid_4':
         clipper = YearGridClipper(year: DateTime.now().year.toString(), index: index);
         break;
@@ -1727,6 +1728,9 @@ class GlassSplitLinePainter extends CustomPainter {
       case 'puzzle_trio':
         PuzzleTrioPainter(color: lineColor, width: lineWidth).paint(canvas, size);
         break;
+      case 'puzzle_5':
+        Puzzle5Painter(color: lineColor, width: lineWidth).paint(canvas, size);
+        break;
       case 'cat_hearts':
         CatHeartsPainter(color: lineColor, width: lineWidth).paint(canvas, size);
         break;
@@ -1806,9 +1810,10 @@ class GlassSplitLinePainter extends CustomPainter {
       case 'star_burst_5':
         StarBurst5Painter(color: lineColor, width: lineWidth).paint(canvas, size);
         break;
-      case 'staircase_5':
-        StaircasePainter(color: lineColor, width: lineWidth).paint(canvas, size);
+      case 'crest5':
+        Crest5Painter(color: lineColor, width: lineWidth).paint(canvas, size);
         break;
+
       case 'comic_burst_5':
         // Professional Comic Red with bold thickness
         final comicBorderPaint = Paint()
