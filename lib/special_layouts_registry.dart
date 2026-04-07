@@ -887,55 +887,181 @@ class VCutSplitClipper extends CustomClipper<Path> {
 }
 
 class CircleInsetClipper extends CustomClipper<Path> {
-  final bool isInside;
-  CircleInsetClipper({required this.isInside});
+  final int index;
+  final int totalCount;
+  CircleInsetClipper({required this.index, required this.totalCount});
 
   @override
   Path getClip(Size size) {
-    double r = size.width * 0.35;
+    double r = size.width * 0.30; // Slightly smaller to leave more room for segments
+    double cx = size.width * 0.5;
+    double cy = size.height * 0.5;
+    
     Path circle = Path()
-      ..addOval(
-        Rect.fromCircle(
-          center: Offset(size.width * 0.5, size.height * 0.5),
-          radius: r,
-        ),
-      );
+      ..addOval(Rect.fromCircle(center: Offset(cx, cy), radius: r));
 
-    if (isInside) return circle;
+    if (index == 0) return circle;
 
-    Path full = Path()..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
-    return Path.combine(PathOperation.difference, full, circle);
+    Path segment = Path();
+    if (totalCount == 5) {
+      // Split background into 4 quadrants
+      if (index == 1) segment.addRect(Rect.fromLTWH(0, 0, cx, cy)); // Top-Left
+      else if (index == 2) segment.addRect(Rect.fromLTWH(cx, 0, cx, cy)); // Top-Right
+      else if (index == 3) segment.addRect(Rect.fromLTWH(0, cy, cx, cy)); // Bottom-Left
+      else if (index == 4) segment.addRect(Rect.fromLTWH(cx, cy, cx, cy)); // Bottom-Right
+    } else {
+      // Fallback for 2 images
+      segment.addRect(Rect.fromLTWH(0, 0, size.width, size.height));
+    }
+
+    return Path.combine(PathOperation.difference, segment, circle);
   }
 
   @override
   bool shouldReclip(CircleInsetClipper oldClipper) =>
-      isInside != oldClipper.isInside;
+      index != oldClipper.index || totalCount != oldClipper.totalCount;
+}
+
+class CircleInsetPainter extends CustomPainter {
+  final Color color;
+  final double width;
+  final int totalCount;
+  CircleInsetPainter({required this.color, required this.width, required this.totalCount});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (width < 0.5) return;
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = width
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    double r = size.width * 0.30;
+    double cx = size.width * 0.5;
+    double cy = size.height * 0.5;
+
+    // Draw central circle
+    canvas.drawCircle(Offset(cx, cy), r, paint);
+
+    if (totalCount == 5) {
+      // Draw quadrant lines (stopping at the circle)
+      // Horizontal
+      canvas.drawLine(Offset(0, cy), Offset(cx - r, cy), paint); // Left
+      canvas.drawLine(Offset(cx + r, cy), Offset(size.width, cy), paint); // Right
+      // Vertical
+      canvas.drawLine(Offset(cx, 0), Offset(cx, cy - r), paint); // Top
+      canvas.drawLine(Offset(cx, cy + r), Offset(cx, size.height), paint); // Bottom
+    }
+  }
+
+  @override
+  bool shouldRepaint(CircleInsetPainter old) =>
+      old.color != color || old.width != width || old.totalCount != totalCount;
 }
 
 class DiamondInsetClipper extends CustomClipper<Path> {
-  final bool isInside;
-  DiamondInsetClipper({required this.isInside});
+  final int index;
+  final int totalCount;
+  DiamondInsetClipper({required this.index, required this.totalCount});
 
   @override
   Path getClip(Size size) {
     double w = size.width;
     double h = size.height;
+    double cx = w * 0.5;
+    double cy = h * 0.5;
+
     Path diamond = Path()
-      ..moveTo(w * 0.5, h * 0.2)
-      ..lineTo(w * 0.85, h * 0.5)
-      ..lineTo(w * 0.5, h * 0.8)
-      ..lineTo(w * 0.15, h * 0.5)
+      ..moveTo(cx, h * 0.2)
+      ..lineTo(w * 0.8, cy)
+      ..lineTo(cx, h * 0.8)
+      ..lineTo(w * 0.2, cy)
       ..close();
 
-    if (isInside) return diamond;
+    if (index == 0) return diamond;
 
-    Path full = Path()..addRect(Rect.fromLTWH(0, 0, w, h));
-    return Path.combine(PathOperation.difference, full, diamond);
+    Path segment = Path();
+    if (totalCount == 5) {
+      // Split background into 4 non-overlapping segments that match the border lines
+      if (index == 1) { // Top Triangle
+        segment.moveTo(0, 0);
+        segment.lineTo(w, 0);
+        segment.lineTo(cx, h * 0.2);
+        segment.close();
+      } else if (index == 2) { // Right Side Pocket
+        segment.moveTo(w, 0);
+        segment.lineTo(w, h);
+        segment.lineTo(cx, h * 0.8);
+        segment.lineTo(w * 0.8, cy);
+        segment.lineTo(cx, h * 0.2);
+        segment.close();
+      } else if (index == 3) { // Bottom Triangle
+        segment.moveTo(w, h);
+        segment.lineTo(0, h);
+        segment.lineTo(cx, h * 0.8);
+        segment.close();
+      } else if (index == 4) { // Left Side Pocket
+        segment.moveTo(0, h);
+        segment.lineTo(0, 0);
+        segment.lineTo(cx, h * 0.2);
+        segment.lineTo(w * 0.2, cy);
+        segment.lineTo(cx, h * 0.8);
+        segment.close();
+      }
+    } else {
+      segment.addRect(Rect.fromLTWH(0, 0, w, h));
+    }
+
+    return Path.combine(PathOperation.difference, segment, diamond);
   }
 
   @override
   bool shouldReclip(DiamondInsetClipper oldClipper) =>
-      isInside != oldClipper.isInside;
+      index != oldClipper.index || totalCount != oldClipper.totalCount;
+}
+
+class DiamondInsetPainter extends CustomPainter {
+  final Color color;
+  final double width;
+  final int totalCount;
+  DiamondInsetPainter({required this.color, required this.width, required this.totalCount});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (width < 0.5) return;
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = width
+      ..style = PaintingStyle.stroke
+      ..strokeJoin = StrokeJoin.round;
+
+    double w = size.width;
+    double h = size.height;
+    double cx = w * 0.5;
+    double cy = h * 0.5;
+
+    // Draw central diamond
+    final diamond = Path()
+      ..moveTo(cx, h * 0.2)
+      ..lineTo(w * 0.8, cy)
+      ..lineTo(cx, h * 0.8)
+      ..lineTo(w * 0.2, cy)
+      ..close();
+    canvas.drawPath(diamond, paint);
+
+    if (totalCount == 5) {
+      // Draw diagonal lines to corners (stopping at diamond vertices)
+      canvas.drawLine(Offset(0, 0), Offset(cx, h * 0.2), paint); // TL
+      canvas.drawLine(Offset(w, 0), Offset(cx, h * 0.2), paint); // TR
+      canvas.drawLine(Offset(w, h), Offset(cx, h * 0.8), paint); // BR
+      canvas.drawLine(Offset(0, h), Offset(cx, h * 0.8), paint); // BL
+    }
+  }
+
+  @override
+  bool shouldRepaint(DiamondInsetPainter old) =>
+      old.color != color || old.width != width || old.totalCount != totalCount;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1111,20 +1237,21 @@ class Crest5Clipper extends CustomClipper<Path> {
     final double h = size.height;
     final double cx = w / 2;
     final double cy = h / 2;
-    final double sw = w * 0.44; // Shield width
-    final double sh = h * 0.52; // Shield height
+    final double sw = w * 0.42; // Sleeker shield width
+    final double sh = h * 0.50; // Sleeker shield height
+    final double peakOffset = sh * 0.12;
 
-    // Shield path (classic crest shape)
     Path path = Path();
-    path.moveTo(cx, cy - sh/2); // Top-center point
-    // Top-right curve
-    path.quadraticBezierTo(cx + sw/2, cy - sh/2, cx + sw/2, cy); 
-    // Bottom-right curve/point
+    // Peak Top
+    path.moveTo(cx, cy - sh/2);
+    path.lineTo(cx + sw/2, cy - sh/2 + peakOffset);
+    // Vertical side
+    path.lineTo(cx + sw/2, cy + sh/6);
+    // Pointed Bottom
     path.quadraticBezierTo(cx + sw/2, cy + sh/3, cx, cy + sh/2);
-    // Bottom-left curve/point
-    path.quadraticBezierTo(cx - sw/2, cy + sh/3, cx - sw/2, cy);
-    // Top-left curve
-    path.quadraticBezierTo(cx - sw/2, cy - sh/2, cx, cy - sh/2);
+    path.quadraticBezierTo(cx - sw/2, cy + sh/3, cx - sw/2, cy + sh/6);
+    // Vertical side
+    path.lineTo(cx - sw/2, cy - sh/2 + peakOffset);
     path.close();
     return path;
   }
@@ -1133,20 +1260,22 @@ class Crest5Clipper extends CustomClipper<Path> {
   Path getClip(Size size) {
     final double w = size.width;
     final double h = size.height;
+    final double cx = w / 2;
+    final double cy = h / 2;
 
     // Index 4 is the central crest shield
     if (index == 4) return getShieldPath(size);
 
-    // Indices 0-3 are the quadrants, clipped against the shield
-    Path quadrant = Path();
+    final Path wedge = Path();
     switch (index) {
-      case 0: quadrant.addRect(Rect.fromLTWH(0, 0, w/2, h/2)); break;      // Top-Left
-      case 1: quadrant.addRect(Rect.fromLTWH(w/2, 0, w/2, h/2)); break;    // Top-Right
-      case 2: quadrant.addRect(Rect.fromLTWH(0, h/2, w/2, h/2)); break;    // Bottom-Left
-      case 3: quadrant.addRect(Rect.fromLTWH(w/2, h/2, w/2, h/2)); break;  // Bottom-Right
+      case 0: wedge.addRect(Rect.fromLTRB(0, 0, cx, cy)); break; // TL
+      case 1: wedge.addRect(Rect.fromLTRB(cx, 0, w, cy)); break; // TR
+      case 2: wedge.addRect(Rect.fromLTRB(cx, cy, w, h)); break; // BR
+      case 3: wedge.addRect(Rect.fromLTRB(0, cy, cx, h)); break; // BL
     }
 
-    return Path.combine(PathOperation.difference, quadrant, getShieldPath(size));
+    // Clip against central shield
+    return Path.combine(PathOperation.difference, wedge, getShieldPath(size));
   }
 
   @override
@@ -1170,11 +1299,14 @@ class Crest5Painter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round
       ..strokeCap = StrokeCap.round;
 
-    // 1. Draw the central crest shape
+    final Path path = Path();
+    // 1. Draw the outer boundary (canvas frame)
+    path.addRect(Rect.fromLTWH(0, 0, w, h));
+
+    // 2. Draw the central crest shape
     canvas.drawPath(Crest5Clipper.getShieldPath(size), paint);
 
-    // 2. Draw the quadrant dividers, clipped so they don't cross the shield
-    // This provides the "stitched" professional look seen in other layouts.
+    // 3. Draw the quadrant dividers, clipped so they don't cross the shield
     canvas.save();
     canvas.clipPath(Path.combine(
       PathOperation.difference,
@@ -1183,11 +1315,14 @@ class Crest5Painter extends CustomPainter {
     ));
 
     // Vertical divider
-    canvas.drawLine(Offset(w/2, 0), Offset(w/2, h), paint);
+    canvas.drawLine(Offset(w / 2, 0), Offset(w / 2, h), paint);
     // Horizontal divider
-    canvas.drawLine(Offset(0, h/2), Offset(w, h/2), paint);
-    
+    canvas.drawLine(Offset(0, h / 2), Offset(w, h / 2), paint);
+
     canvas.restore();
+    
+    // Draw the collected path
+    canvas.drawPath(path, paint);
   }
 
   @override
@@ -1195,14 +1330,124 @@ class Crest5Painter extends CustomPainter {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// GEO CREST 5 — Diamond Star (center diamond + 4 corner triangles)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class GeoCrest5Clipper extends CustomClipper<Path> {
+  final int index;
+  GeoCrest5Clipper({required this.index});
+
+  // Diamond vertices — pushed close to edges for maximum coverage
+  static Offset _top(Size s)    => Offset(s.width * 0.5,  s.height * 0.13);
+  static Offset _right(Size s)  => Offset(s.width * 0.87, s.height * 0.5);
+  static Offset _bottom(Size s) => Offset(s.width * 0.5,  s.height * 0.87);
+  static Offset _left(Size s)   => Offset(s.width * 0.13, s.height * 0.5);
+
+  static Path getDiamondPath(Size s) {
+    return Path()
+      ..moveTo(_top(s).dx,    _top(s).dy)
+      ..lineTo(_right(s).dx,  _right(s).dy)
+      ..lineTo(_bottom(s).dx, _bottom(s).dy)
+      ..lineTo(_left(s).dx,   _left(s).dy)
+      ..close();
+  }
+
+  @override
+  Path getClip(Size size) {
+    final double w = size.width;
+    final double h = size.height;
+    switch (index) {
+      case 0: // Center diamond
+        return getDiamondPath(size);
+      case 1: // Top-Left triangle: corner (0,0) between _top and _left
+        return Path()
+          ..moveTo(0, 0)
+          ..lineTo(_top(size).dx,  _top(size).dy)
+          ..lineTo(_left(size).dx, _left(size).dy)
+          ..close();
+      case 2: // Top-Right triangle: corner (w,0) between _top and _right
+        return Path()
+          ..moveTo(w, 0)
+          ..lineTo(_top(size).dx,   _top(size).dy)
+          ..lineTo(_right(size).dx, _right(size).dy)
+          ..close();
+      case 3: // Bottom-Right triangle: corner (w,h) between _right and _bottom
+        return Path()
+          ..moveTo(w, h)
+          ..lineTo(_right(size).dx,  _right(size).dy)
+          ..lineTo(_bottom(size).dx, _bottom(size).dy)
+          ..close();
+      case 4: // Bottom-Left triangle: corner (0,h) between _bottom and _left
+        return Path()
+          ..moveTo(0, h)
+          ..lineTo(_bottom(size).dx, _bottom(size).dy)
+          ..lineTo(_left(size).dx,   _left(size).dy)
+          ..close();
+      default:
+        return Path()..addRect(Rect.fromLTWH(0, 0, w, h));
+    }
+  }
+
+  @override
+  bool shouldReclip(GeoCrest5Clipper old) => old.index != index;
+}
+
+class GeoCrest5Painter extends CustomPainter {
+  final Color color;
+  final double width;
+  GeoCrest5Painter({required this.color, required this.width});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (width < 0.5) return;
+    final double w = size.width;
+    final double h = size.height;
+
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = width
+      ..style = PaintingStyle.stroke
+      ..strokeJoin = StrokeJoin.miter
+      ..strokeCap = StrokeCap.butt;
+
+    final top    = GeoCrest5Clipper._top(size);
+    final right  = GeoCrest5Clipper._right(size);
+    final bottom = GeoCrest5Clipper._bottom(size);
+    final left   = GeoCrest5Clipper._left(size);
+
+    // Draw the central diamond border
+    canvas.drawPath(GeoCrest5Clipper.getDiamondPath(size), paint);
+
+    // Draw the 4 seam lines from corners to diamond vertices
+    canvas.drawLine(const Offset(0, 0), top,    paint); // TL corner → top vertex
+    canvas.drawLine(const Offset(0, 0), left,   paint); // TL corner → left vertex
+    canvas.drawLine(Offset(w, 0),       top,    paint); // TR corner → top vertex
+    canvas.drawLine(Offset(w, 0),       right,  paint); // TR corner → right vertex
+    canvas.drawLine(Offset(w, h),       right,  paint); // BR corner → right vertex
+    canvas.drawLine(Offset(w, h),       bottom, paint); // BR corner → bottom vertex
+    canvas.drawLine(Offset(0, h),       bottom, paint); // BL corner → bottom vertex
+    canvas.drawLine(Offset(0, h),       left,   paint); // BL corner → left vertex
+
+    // Outer canvas frame
+    canvas.drawRect(Rect.fromLTWH(0, 0, w, h), paint);
+  }
+
+  @override
+  bool shouldRepaint(GeoCrest5Painter old) =>
+      old.color != color || old.width != width;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 
 // PINTERESTY / ORGANIC CLIPPERS
 // ═══════════════════════════════════════════════════════════════════════════════
 
+
 class SlantedClipper extends CustomClipper<Path> {
   final double slant;
   final int index;
-  SlantedClipper({required this.slant, required this.index});
+  final int totalCount;
+  SlantedClipper({required this.slant, required this.index, this.totalCount = 2});
 
   @override
   Path getClip(Size size) {
@@ -1211,6 +1456,22 @@ class SlantedClipper extends CustomClipper<Path> {
     double h = size.height;
     double offset = slant * w;
 
+    if (totalCount == 5) {
+      // 5-image row of slanted bars for a "Mosaic" look
+      double unitW = w / 5;
+      double x0 = index * unitW;
+      double x1 = (index + 1) * unitW;
+      
+      // We apply slant to the internal dividers
+      path.moveTo(x0 + (index == 0 ? 0 : offset), 0);
+      path.lineTo(x1 + (index == 4 ? 0 : offset), 0);
+      path.lineTo(x1 - (index == 4 ? 0 : offset), h);
+      path.lineTo(x0 - (index == 0 ? 0 : offset), h);
+      path.close();
+      return path;
+    }
+
+    // Classic 2v1 split
     final split = Path();
     split.moveTo(0, 0);
     split.lineTo(w, 0);
@@ -1226,13 +1487,14 @@ class SlantedClipper extends CustomClipper<Path> {
 
   @override
   bool shouldReclip(SlantedClipper old) =>
-      old.slant != slant || old.index != index;
+      old.slant != slant || old.index != index || old.totalCount != totalCount;
 }
 
 class ParallelogramClipper extends CustomClipper<Path> {
   final double shift;
   final int index;
-  ParallelogramClipper({this.shift = 0.2, required this.index});
+  final int totalCount;
+  ParallelogramClipper({this.shift = 0.2, required this.index, this.totalCount = 2});
 
   @override
   Path getClip(Size size) {
@@ -1240,6 +1502,21 @@ class ParallelogramClipper extends CustomClipper<Path> {
     double w = size.width;
     double h = size.height;
     double s = shift * w;
+
+    if (totalCount == 5) {
+      // 5-image row of leaning parallelograms
+      double unitW = w / 5;
+      double x0 = index * unitW;
+      double x1 = (index + 1) * unitW;
+      
+      // All internal lines lean by 's'
+      path.moveTo(x0 + (index == 0 ? 0 : s), 0);
+      path.lineTo(x1 + (index == 4 ? 0 : s), 0);
+      path.lineTo(x1 - (index == 4 ? 0 : s) + s, h); // Shift bottom too to keep parallel
+      path.lineTo(x0 - (index == 0 ? 0 : s) + s, h);
+      path.close();
+      return path;
+    }
 
     final split = Path();
     split.moveTo(s, 0);
@@ -1256,7 +1533,7 @@ class ParallelogramClipper extends CustomClipper<Path> {
 
   @override
   bool shouldReclip(ParallelogramClipper old) =>
-      old.shift != shift || old.index != index;
+      old.shift != shift || old.index != index || old.totalCount != totalCount;
 }
 
 class CapsuleClipper extends CustomClipper<Path> {
@@ -1299,11 +1576,29 @@ class ArchClipper extends CustomClipper<Path> {
     double h = size.height;
 
     // Unique arch positioning/sizing
-    double unitW = w / (totalCount > 0 ? totalCount : 1);
-    double left = index * unitW + (unitW * 0.05);
-    double archW = unitW * 0.9;
-    double archH = h * 0.7;
-    double archTop = h * 0.15;
+    double archW, archH, archTop, left;
+
+    if (totalCount == 5) {
+      // Grand Colonnade - Symmetrical Non-Overlapping Cascade
+      // 0.15 (S) + 0.20 (M) + 0.30 (C) + 0.20 (M) + 0.15 (S) = 1.00
+      if (index == 0) { // Grand Center
+        archW = w * 0.30; archH = h * 0.75; archTop = h * 0.12; left = w * 0.35;
+      } else if (index == 1) { // Medium Left
+        archW = w * 0.20; archH = h * 0.60; archTop = h * 0.20; left = w * 0.15;
+      } else if (index == 2) { // Medium Right
+        archW = w * 0.20; archH = h * 0.60; archTop = h * 0.20; left = w * 0.65;
+      } else if (index == 3) { // Small Outer Left
+        archW = w * 0.15; archH = h * 0.45; archTop = h * 0.28; left = 0.0;
+      } else { // Small Outer Right
+        archW = w * 0.15; archH = h * 0.45; archTop = h * 0.28; left = w * 0.85;
+      }
+    } else {
+      double unitW = w / (totalCount > 0 ? totalCount : 1);
+      left = index * unitW + (unitW * 0.05);
+      archW = unitW * 0.9;
+      archH = h * 0.7;
+      archTop = h * 0.15;
+    }
 
     path.moveTo(left, archTop + archH);
     path.lineTo(left, archTop + archW * 0.5);
@@ -1326,7 +1621,8 @@ class OrganicBlobClipper extends CustomClipper<Path> {
   final int seed;
   final int index;
   final int totalCount;
-  OrganicBlobClipper(this.seed, {this.index = 0, this.totalCount = 1});
+  final double inset;
+  OrganicBlobClipper(this.seed, {this.index = 0, this.totalCount = 1, this.inset = 0.0});
 
   @override
   Path getClip(Size size) {
@@ -1356,6 +1652,24 @@ class OrganicBlobClipper extends CustomClipper<Path> {
       } else {
         effectiveW = w * 0.5; effectiveH = h * 0.5; xOffset = w * 0.45; yOffset = h * 0.45; rotation = 0.15;
       }
+    } else if (totalCount == 5) {
+      // Modern 'Liquid Cluster' — central hero + 4 smaller orbiting satellites
+      if (index == 0) { // Center Hero
+        effectiveW = w * 0.38; effectiveH = h * 0.38;
+        xOffset = w * 0.31; yOffset = h * 0.31; rotation = 0.05;
+      } else if (index == 1) { // TL Satellite
+        effectiveW = w * 0.35; effectiveH = h * 0.35;
+        xOffset = w * 0.08; yOffset = h * 0.08; rotation = -0.15;
+      } else if (index == 2) { // TR Satellite
+        effectiveW = w * 0.35; effectiveH = h * 0.35;
+        xOffset = w * 0.57; yOffset = h * 0.08; rotation = 0.12;
+      } else if (index == 3) { // BL Satellite
+        effectiveW = w * 0.35; effectiveH = h * 0.35;
+        xOffset = w * 0.08; yOffset = h * 0.57; rotation = 0.08;
+      } else if (index == 4) { // BR Satellite
+        effectiveW = w * 0.35; effectiveH = h * 0.35;
+        xOffset = w * 0.57; yOffset = h * 0.57; rotation = -0.05;
+      }
     } else if (totalCount > 1) {
       int cols = (totalCount > 2) ? 2 : 1;
       xOffset = (index % cols) * (w / cols) * 0.45;
@@ -1372,16 +1686,22 @@ class OrganicBlobClipper extends CustomClipper<Path> {
 
     final s = silhouettes[index % silhouettes.length];
     
-    path.moveTo(xOffset + effectiveW * s[0], yOffset + effectiveH * s[1]);
-    path.quadraticBezierTo(xOffset + effectiveW * s[2], yOffset + effectiveH * s[3], xOffset + effectiveW * s[4], yOffset + effectiveH * s[5]);
-    path.quadraticBezierTo(xOffset + effectiveW * s[6], yOffset + effectiveH * s[7], xOffset + effectiveW * s[8], yOffset + effectiveH * s[9]);
-    path.quadraticBezierTo(xOffset + effectiveW * s[10], yOffset + effectiveH * s[11], xOffset + effectiveW * s[12], yOffset + effectiveH * s[13]);
-    path.quadraticBezierTo(xOffset + effectiveW * s[14], yOffset + effectiveH * s[15], xOffset + effectiveW * s[0], yOffset + effectiveH * s[1]);
+    // Apply inset to scale and center
+    double finalW = effectiveW - inset * 2;
+    double finalH = effectiveH - inset * 2;
+    double finalX = xOffset + inset;
+    double finalY = yOffset + inset;
+
+    path.moveTo(finalX + finalW * s[0], finalY + finalH * s[1]);
+    path.quadraticBezierTo(finalX + finalW * s[2], finalY + finalH * s[3], finalX + finalW * s[4], finalY + finalH * s[5]);
+    path.quadraticBezierTo(finalX + finalW * s[6], finalY + finalH * s[7], finalX + finalW * s[8], finalY + finalH * s[9]);
+    path.quadraticBezierTo(finalX + finalW * s[10], finalY + finalH * s[11], finalX + finalW * s[12], finalY + finalH * s[13]);
+    path.quadraticBezierTo(finalX + finalW * s[14], finalY + finalH * s[15], finalX + finalW * s[0], finalY + finalH * s[1]);
     path.close();
 
     if (rotation != 0) {
-      final cx = xOffset + effectiveW / 2;
-      final cy = yOffset + effectiveH / 2;
+      final cx = finalX + finalW / 2;
+      final cy = finalY + finalH / 2;
       final matrix = Matrix4.identity()
         ..translate(cx, cy)
         ..rotateZ(rotation)
@@ -1419,21 +1739,52 @@ class ArtisticNatureClipper extends CustomClipper<Path> {
     double h = size.height;
 
     if (mode == 'hearts_flower') {
-      // Petal arrangement
-      double centerX = w * 0.5;
-      double centerY = h * 0.5;
-      double radius = w * 0.3; // Increased
-      double angle = (2 * math.pi / totalCount) * index;
-      double px = centerX + radius * 0.95 * math.cos(angle);
-      double py = centerY + radius * 0.95 * math.sin(angle);
-      // Increased heart size drastically per user request
-      return _getHeartPath(px, py, radius * 1.4, rotation: angle + math.pi / 2);
+      if (totalCount == 5) {
+        // Geometric Heart Flower: 5 petals pointing inward to the center
+        final double s = w * 0.32; 
+        final double R = s * 1.05; // Distance from center to heart top dip
+        final double cx = w * 0.5;
+        final double cy = h * 0.5;
+        final double theta = -math.pi / 2 + (2 * math.pi / 5) * index;
+        final double px = cx + R * math.cos(theta);
+        final double py = cy + R * math.sin(theta);
+        // Rotate heart so bottom tip points precisely to center
+        return _getHeartPath(px, py, s, rotation: theta + math.pi / 2);
+      } else {
+        // Fallback for 2-image structure
+        final double s = w * 0.45;
+        final double cx = w * 0.5;
+        final double cy = h * 0.5;
+        if (index == 0) {
+          return _getHeartPath(cx - s * 0.55, cy - s * 0.45, s);
+        } else {
+          return _getHeartPath(cx + s * 0.55, cy - s * 0.45, s);
+        }
+      }
     } else if (mode == 'hearts_balloon') {
-      // Larger balloons
-      double bx = (w / (totalCount + 1)) * (index + 1);
-      double by = h * 0.4 + (index % 2 == 0 ? -h * 0.18 : h * 0.12);
-      double bSize = w * 0.45; // Even larger
-      return _getHeartPath(bx, by, bSize);
+      if (totalCount == 5) {
+        // Floating Balloon Bouquet layout
+        final double s = w * 0.30;
+        final List<List<double>> pos = [
+          [w * 0.50, h * 0.05], // 0: Top central
+          [w * 0.20, h * 0.30], // 1: Mid left
+          [w * 0.80, h * 0.30], // 2: Mid right
+          [w * 0.35, h * 0.65], // 3: Bottom left
+          [w * 0.65, h * 0.65], // 4: Bottom right
+        ];
+        final int i = index.clamp(0, pos.length - 1);
+        final double px = pos[i][0];
+        final double py = pos[i][1];
+        // Point bottom tip toward an imaginary 'knot' at bottom center
+        final double rot = math.atan2(h * 1.05 - py, w * 0.5 - px) - math.pi / 2;
+        return _getHeartPath(px, py, s, rotation: rot);
+      } else {
+        // Larger fallback balloons
+        double bx = (w / (totalCount + 1)) * (index + 1);
+        double by = h * 0.4 + (index % 2 == 0 ? -h * 0.18 : h * 0.12);
+        double bSize = w * 0.45;
+        return _getHeartPath(bx, by, bSize);
+      }
     } else if (mode == 'random_hearts') {
       // Better distribution, larger hearts
       List<double> xPattern = [0.25, 0.7, 0.35, 0.85, 0.5];

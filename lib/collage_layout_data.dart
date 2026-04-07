@@ -21,6 +21,9 @@ class CollageLayoutDef {
   /// Normalized cell rects for grid-based layouts.
   final List<CellRect>? cells;
 
+  /// Optional corner radius for cell-based layouts.
+  final double cornerRadius;
+
   const CollageLayoutDef({
     required this.name,
     required this.icon,
@@ -28,6 +31,7 @@ class CollageLayoutDef {
     this.isClipBased = false,
     this.clipType,
     this.cells,
+    this.cornerRadius = 0.0,
   });
 }
 
@@ -1483,11 +1487,11 @@ final List<CollageLayoutDef> layouts5 = [
     icon: Icons.auto_awesome_mosaic_rounded,
     imageCount: 5,
     cells: [
-      CellRect(0.4, 0.4, 0.6, 0.6),
-      CellRect(0.0, 0.0, 0.4, 0.35),
-      CellRect(0.0, 0.35, 0.4, 0.25),
-      CellRect(0.4, 0.0, 0.35, 0.4),
-      CellRect(0.75, 0.0, 0.25, 0.4),
+      CellRect(0.4, 0.4, 0.6, 0.6),    // Big Bottom-Right
+      CellRect(0.0, 0.0, 0.65, 0.4),   // Top Left-Wide
+      CellRect(0.65, 0.0, 0.35, 0.4),  // Top Right-Narrow
+      CellRect(0.0, 0.4, 0.4, 0.25),   // Left Upper-Small
+      CellRect(0.0, 0.65, 0.4, 0.35),  // Left Lower-Small (Fills the previous empty gap)
     ],
   ),
 
@@ -1536,11 +1540,11 @@ final List<CollageLayoutDef> layouts5 = [
     icon: Icons.dashboard_rounded,
     imageCount: 5,
     cells: [
-      CellRect(0.0, 0.0, 0.6, 0.55),
-      CellRect(0.6, 0.0, 0.4, 0.275),
-      CellRect(0.6, 0.275, 0.4, 0.275),
-      CellRect(0.0, 0.55, 0.5, 0.45),
-      CellRect(0.5, 0.55, 0.5, 0.45),
+      CellRect(0.0, 0.0, 1.0, 0.35),   // Top Banner Hero
+      CellRect(0.0, 0.35, 0.3, 0.65),  // Bottom Left Pillar
+      CellRect(0.3, 0.35, 0.4, 0.4),   // Bottom Mid-Top
+      CellRect(0.3, 0.75, 0.4, 0.25),  // Bottom Mid-Footer
+      CellRect(0.7, 0.35, 0.3, 0.65),  // Bottom Right Pillar
     ],
   ),
   // 18. Checkerboard 5
@@ -1601,12 +1605,13 @@ final List<CollageLayoutDef> layouts5 = [
     name: 'Pinterest Grid',
     icon: Icons.grid_on_rounded,
     imageCount: 5,
+    cornerRadius: 12.0,
     cells: [
-      CellRect(0.0, 0.0, 0.5, 0.4),
-      CellRect(0.5, 0.0, 0.5, 0.6),
-      CellRect(0.0, 0.4, 0.5, 0.6),
-      CellRect(0.5, 0.6, 0.5, 0.4),
-      CellRect(0.25, 0.3, 0.5, 0.4),
+      CellRect(0.04, 0.04, 0.44, 0.58), // Pillar 1, Top-Left
+      CellRect(0.52, 0.04, 0.44, 0.32), // Pillar 2, Top-Right
+      CellRect(0.04, 0.66, 0.44, 0.30), // Pillar 3, Bottom-Left
+      CellRect(0.52, 0.40, 0.44, 0.56), // Pillar 4, Bottom-Right
+      CellRect(0.28, 0.32, 0.44, 0.36), // Center Pop (Floating Overlay)
     ],
   ),
   const CollageLayoutDef(
@@ -1614,11 +1619,11 @@ final List<CollageLayoutDef> layouts5 = [
     icon: Icons.stairs_rounded,
     imageCount: 5,
     cells: [
-      CellRect(0.0,  0.0,   0.3,  1.0),   // Full left pillar
-      CellRect(0.3,  0.0,   0.35, 0.65),  // Middle stepped pillar
-      CellRect(0.65, 0.0,   0.35, 0.325), // Top small step
-      CellRect(0.65, 0.325, 0.35, 0.325), // Middle small step
-      CellRect(0.3,  0.65,  0.7,  0.35),  // Large bottom base
+      CellRect(0.0, 0.0, 0.33, 1.0),   // Far-Left Pillar
+      CellRect(0.33, 0.0, 0.34, 0.6),  // Mid-Pillar Top Step
+      CellRect(0.67, 0.0, 0.33, 0.3),  // Far-Right Top Step
+      CellRect(0.33, 0.6, 0.67, 0.4),  // Bottom Shared Foundation
+      CellRect(0.67, 0.3, 0.33, 0.3),  // Mid-Right Step Side
     ],
   ),
   const CollageLayoutDef(
@@ -1672,7 +1677,7 @@ final List<CollageLayoutDef> layouts5 = [
     name: 'Geometric Crest',
     icon: Icons.security_rounded,
     isClipBased: true,
-    clipType: 'crest5',
+    clipType: 'geo_crest5',
     imageCount: 5,
   ),
   const CollageLayoutDef(
