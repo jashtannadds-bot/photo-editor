@@ -1732,6 +1732,83 @@ class ArtisticNatureClipper extends CustomClipper<Path> {
     required this.totalCount,
   });
 
+  /// Centralized source of truth for Random Hearts positioning and sizing.
+  static Map<String, double> getHeartParams(int index, int totalCount, double w, double h) {
+    double x = 0.5, y = 0.5, size = 0.5, rotation = 0.0;
+
+    if (totalCount == 2) {
+      if (index == 0) { x = 0.32; y = 0.38; size = 0.65; rotation = -0.12; }
+      else { x = 0.70; y = 0.28; size = 0.48; rotation = 0.18; }
+    } else if (totalCount == 3) {
+      if (index == 0) { x = 0.50; y = 0.45; size = 0.60; rotation = 0.05; }
+      else if (index == 1) { x = 0.20; y = 0.25; size = 0.45; rotation = -0.25; }
+      else { x = 0.80; y = 0.70; size = 0.52; rotation = 0.22; }
+    } else if (totalCount == 4) {
+      if (index == 0) { x = 0.25; y = 0.30; size = 0.50; rotation = -0.18; }
+      else if (index == 1) { x = 0.75; y = 0.25; size = 0.48; rotation = 0.12; }
+      else if (index == 2) { x = 0.30; y = 0.72; size = 0.44; rotation = 0.15; }
+      else { x = 0.78; y = 0.75; size = 0.55; rotation = -0.12; }
+    } else if (totalCount == 5) {
+      if (index == 0) { x = 0.50; y = 0.50; size = 0.58; rotation = 0.00; }
+      else if (index == 1) { x = 0.15; y = 0.20; size = 0.44; rotation = -0.28; }
+      else if (index == 2) { x = 0.85; y = 0.18; size = 0.46; rotation = 0.28; }
+      else if (index == 3) { x = 0.20; y = 0.80; size = 0.42; rotation = 0.22; }
+      else { x = 0.80; y = 0.82; size = 0.50; rotation = -0.18; }
+    } else {
+      // Dynamic fallback for >5 images
+      x = (0.2 + (index * 0.33)) % 0.7 + 0.15;
+      y = (0.2 + (index * 0.41)) % 0.7 + 0.15;
+      size = 0.4 + (index % 2 == 0 ? 0.08 : 0.0);
+      rotation = (index * 0.6) % 1.2 - 0.6;
+    }
+
+    return {
+      'x': x * w,
+      'y': y * h,
+      'size': size * w,
+      'rotation': rotation,
+    };
+  }
+
+  /// Centralized source of truth for Heart Balloon bouquet positioning.
+  static Map<String, double> getBalloonParams(int index, int totalCount, double w, double h) {
+    double x = 0.5, y = 0.5, size = 0.35, rotation = 0.0;
+
+    // A clustered "Bouquet" composition near the top center
+    if (totalCount == 2) {
+      if (index == 0) { x = 0.42; y = 0.28; size = 0.44; rotation = -0.12; }
+      else { x = 0.58; y = 0.22; size = 0.44; rotation = 0.12; }
+    } else if (totalCount == 3) {
+      if (index == 0) { x = 0.50; y = 0.18; size = 0.46; rotation = 0.00; }
+      else if (index == 1) { x = 0.38; y = 0.38; size = 0.40; rotation = -0.22; }
+      else { x = 0.62; y = 0.38; size = 0.40; rotation = 0.22; }
+    } else if (totalCount == 4) {
+      if (index == 0) { x = 0.44; y = 0.16; size = 0.42; rotation = -0.08; }
+      else if (index == 1) { x = 0.56; y = 0.16; size = 0.42; rotation = 0.08; }
+      else if (index == 2) { x = 0.32; y = 0.42; size = 0.38; rotation = -0.28; }
+      else { x = 0.68; y = 0.42; size = 0.38; rotation = 0.28; }
+    } else if (totalCount == 5) {
+      if (index == 0) { x = 0.50; y = 0.14; size = 0.42; rotation = 0.00; }
+      else if (index == 1) { x = 0.35; y = 0.28; size = 0.38; rotation = -0.18; }
+      else if (index == 2) { x = 0.65; y = 0.28; size = 0.38; rotation = 0.18; }
+      else if (index == 3) { x = 0.42; y = 0.48; size = 0.35; rotation = -0.32; }
+      else { x = 0.58; y = 0.48; size = 0.35; rotation = 0.32; }
+    } else {
+      // Fallback
+      x = (0.3 + (index * 0.1)) % 0.4 + 0.3;
+      y = (0.2 + (index * 0.1)) % 0.6 + 0.1;
+      size = 0.4;
+      rotation = (index * 0.2) - 0.5;
+    }
+
+    return {
+      'x': x * w,
+      'y': y * h,
+      'size': size * w,
+      'rotation': rotation,
+    };
+  }
+
   @override
   Path getClip(Size size) {
     final path = Path();
@@ -1762,37 +1839,21 @@ class ArtisticNatureClipper extends CustomClipper<Path> {
         }
       }
     } else if (mode == 'hearts_balloon') {
-      if (totalCount == 5) {
-        // Floating Balloon Bouquet layout
-        final double s = w * 0.30;
-        final List<List<double>> pos = [
-          [w * 0.50, h * 0.05], // 0: Top central
-          [w * 0.20, h * 0.30], // 1: Mid left
-          [w * 0.80, h * 0.30], // 2: Mid right
-          [w * 0.35, h * 0.65], // 3: Bottom left
-          [w * 0.65, h * 0.65], // 4: Bottom right
-        ];
-        final int i = index.clamp(0, pos.length - 1);
-        final double px = pos[i][0];
-        final double py = pos[i][1];
-        // Point bottom tip toward an imaginary 'knot' at bottom center
-        final double rot = math.atan2(h * 1.05 - py, w * 0.5 - px) - math.pi / 2;
-        return _getHeartPath(px, py, s, rotation: rot);
-      } else {
-        // Larger fallback balloons
-        double bx = (w / (totalCount + 1)) * (index + 1);
-        double by = h * 0.4 + (index % 2 == 0 ? -h * 0.18 : h * 0.12);
-        double bSize = w * 0.45;
-        return _getHeartPath(bx, by, bSize);
-      }
+      final params = getBalloonParams(index, totalCount, w, h);
+      return _getHeartPath(
+        params['x']!,
+        params['y']!,
+        params['size']!,
+        rotation: params['rotation']!,
+      );
     } else if (mode == 'random_hearts') {
-      // Better distribution, larger hearts
-      List<double> xPattern = [0.25, 0.7, 0.35, 0.85, 0.5];
-      List<double> yPattern = [0.25, 0.25, 0.75, 0.7, 0.5];
-      double rx = xPattern[index % xPattern.length] * w;
-      double ry = yPattern[index % yPattern.length] * h;
-      double rSize = (index % 2 == 0) ? w * 0.4 : w * 0.5;
-      return _getHeartPath(rx, ry, rSize, rotation: index * 0.9);
+      final params = getHeartParams(index, totalCount, w, h);
+      return _getHeartPath(
+        params['x']!,
+        params['y']!,
+        params['size']!,
+        rotation: params['rotation']!,
+      );
     } else if (mode == 'leaf_fusion') {
       // Petiole-based organic leaf arrangement
       double centerX = w * 0.5;

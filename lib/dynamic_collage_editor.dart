@@ -1847,46 +1847,35 @@ class GlassSplitLinePainter extends CustomPainter {
         for (int i = 0; i < imageCount; i++) {
           path.addPath(_getArtisticPath(clipType, i, imageCount, w, h), Offset.zero);
         }
-        // Draw the hanging strings
+        // Draw the hanging strings converging at a single knot
         final stringPaint = Paint()
-          ..color = lineColor.withOpacity(0.7)
-          ..strokeWidth = math.max(1.5, lineWidth * 0.4)
+          ..color = lineColor.withOpacity(0.55)
+          ..strokeWidth = math.max(1.5, lineWidth * 0.3)
           ..style = PaintingStyle.stroke
           ..strokeCap = StrokeCap.round;
         
         final knotX = w * 0.5;
-        final knotY = h * 1.05;
+        final knotY = h * 0.96; // Clustered knot point (holding position)
+        
         for (int i = 0; i < imageCount; i++) {
-          double tipX = 0, tipY = 0;
-          if (imageCount == 5) {
-            final double s = w * 0.30;
-            final List<List<double>> pos = [
-              [w * 0.50, h * 0.05],
-              [w * 0.20, h * 0.30],
-              [w * 0.80, h * 0.30],
-              [w * 0.35, h * 0.65],
-              [w * 0.65, h * 0.65],
-            ];
-            final int idx = i.clamp(0, pos.length - 1);
-            double px = pos[idx][0], py = pos[idx][1];
-            double rot = math.atan2(h * 1.05 - py, w * 0.5 - px) - math.pi / 2;
-            tipX = px - s * 0.95 * math.sin(rot);
-            tipY = py + s * 0.95 * math.cos(rot);
-          } else {
-            double bx = (w / (imageCount + 1)) * (i + 1);
-            double by = h * 0.4 + (i % 2 == 0 ? -h * 0.18 : h * 0.12);
-            double bSize = w * 0.45;
-            tipX = bx;
-            tipY = by + bSize * 0.95;
-          }
+          final params = ArtisticNatureClipper.getBalloonParams(i, imageCount, w, h);
+          double px = params['x']!, py = params['y']!, s = params['size']!, rot = params['rotation']!;
+          
+          // Tip of the heart (bottom point)
+          double tipX = px - s * 0.95 * math.sin(rot);
+          double tipY = py + s * 0.95 * math.cos(rot);
+          
           final StringPath = Path();
           StringPath.moveTo(tipX, tipY);
-          // Apply a gentle sway curve
-          double ctrlX = (tipX + knotX) / 2 + (i % 2 == 0 ? 15 : -15);
-          double ctrlY = (tipY + knotY) / 2;
+          // Artistic curved string leading to the knot
+          double ctrlX = (tipX + knotX) / 2 + (i % 2 == 0 ? 20 : -20);
+          double ctrlY = (tipY + knotY) / 2 - 10;
           StringPath.quadraticBezierTo(ctrlX, ctrlY, knotX, knotY);
           canvas.drawPath(StringPath, stringPaint);
         }
+        
+        // Draw a small knot circle at the base
+        canvas.drawCircle(Offset(knotX, knotY), 4, Paint()..color = lineColor.withOpacity(0.8));
         break;
       case 'radial_5':
         path.addPath(Radial5Clipper.getRadial5Path(0, size), Offset.zero);
@@ -2078,14 +2067,22 @@ class GlassSplitLinePainter extends CustomPainter {
       double lx = centerX + radius * math.cos(angle);
       double ly = centerY + radius * math.sin(angle);
       return _getLeafShape(lx, ly, radius * 1.5, rotation: angle + math.pi / 2);
+    } else if (mode == 'hearts_balloon') {
+      final params = ArtisticNatureClipper.getBalloonParams(index, totalCount, w, h);
+      return _getHeartShape(
+        params['x']!,
+        params['y']!,
+        params['size']!,
+        rotation: params['rotation']!,
+      );
     } else {
-      // random_hearts - SYNCED with Clipper
-      List<double> xPattern = [0.25, 0.7, 0.35, 0.85, 0.5];
-      List<double> yPattern = [0.25, 0.25, 0.75, 0.7, 0.5];
-      double rx = xPattern[index % xPattern.length] * w;
-      double ry = yPattern[index % yPattern.length] * h;
-      double rSize = (index % 2 == 0) ? w * 0.4 : w * 0.5;
-      return _getHeartShape(rx, ry, rSize, rotation: index * 0.9);
+      final params = ArtisticNatureClipper.getHeartParams(index, totalCount, w, h);
+      return _getHeartShape(
+        params['x']!,
+        params['y']!,
+        params['size']!,
+        rotation: params['rotation']!,
+      );
     }
   }
 
