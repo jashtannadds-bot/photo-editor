@@ -237,6 +237,13 @@ final List<CollageLayoutDef> layouts2 = [
     clipType: 'date_dynamic',
     imageCount: 2,
   ),
+  const CollageLayoutDef(
+    name: 'Magazine Dual',
+    icon: Icons.menu_book_rounded,
+    isClipBased: true,
+    clipType: 'magazine_spread',
+    imageCount: 2,
+  ),
 
   // ── Grid-based (simple splits) ──────────────────────────────────────────
   const CollageLayoutDef(
@@ -287,18 +294,7 @@ final List<CollageLayoutDef> layouts2 = [
     imageCount: 2,
     cells: [CellRect(0.0, 0.0, 1.0, 0.7), CellRect(0.0, 0.7, 1.0, 0.3)],
   ),
-  const CollageLayoutDef(
-    name: 'Golden Left',
-    icon: Icons.view_column_rounded,
-    imageCount: 2,
-    cells: [CellRect(0.0, 0.0, 0.618, 1.0), CellRect(0.618, 0.0, 0.382, 1.0)],
-  ),
-  const CollageLayoutDef(
-    name: 'Golden Top',
-    icon: Icons.view_stream_rounded,
-    imageCount: 2,
-    cells: [CellRect(0.0, 0.0, 1.0, 0.618), CellRect(0.0, 0.618, 1.0, 0.382)],
-  ),
+
   const CollageLayoutDef(
     name: 'Triangle Duo',
     icon: Icons.change_history_rounded,
@@ -318,13 +314,22 @@ final List<CollageLayoutDef> layouts2 = [
     name: 'Story Split',
     icon: Icons.auto_stories_rounded,
     imageCount: 2,
-    cells: [CellRect(0.0, 0.0, 0.3, 1.0), CellRect(0.3, 0.0, 0.7, 1.0)],
+    isClipBased: true,
+    clipType: 'book_3d',
+  ),
+  const CollageLayoutDef(
+    name: 'Prism Fusion',
+    icon: Icons.filter_hdr_rounded,
+    imageCount: 2,
+    isClipBased: true,
+    clipType: 'prism_3d',
   ),
   const CollageLayoutDef(
     name: 'Film Strip',
     icon: Icons.movie_rounded,
     imageCount: 2,
-    cells: [CellRect(0.1, 0.05, 0.8, 0.4), CellRect(0.1, 0.55, 0.8, 0.4)],
+    isClipBased: true,
+    clipType: 'film_strip',
   ),
   const CollageLayoutDef(
     name: 'Modern Slant',
@@ -850,6 +855,14 @@ final List<CollageLayoutDef> layouts3 = [
     imageCount: 3,
   ),
   const CollageLayoutDef(
+    name: 'Parallel View',
+    icon: Icons.view_headline_rounded,
+    isClipBased: true,
+    clipType: 'parallelogram',
+    imageCount: 3,
+  ),
+
+  const CollageLayoutDef(
     name: 'Lotus Trio',
     icon: Icons.local_florist_rounded,
     isClipBased: true,
@@ -966,6 +979,14 @@ final List<CollageLayoutDef> layouts4 = [
     clipType: 'shape_grid_4',
     imageCount: 4,
   ),
+  const CollageLayoutDef(
+    name: 'Parallel View',
+    icon: Icons.view_headline_rounded,
+    isClipBased: true,
+    clipType: 'parallelogram',
+    imageCount: 4,
+  ),
+
   // 1. Classic 2x2
   const CollageLayoutDef(
     name: 'Classic Grid',

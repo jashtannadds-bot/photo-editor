@@ -1147,9 +1147,9 @@ class TrapezoidClipper extends CustomClipper<Path> {
 
     final trapezoid = Path();
     trapezoid.moveTo(0, 0);
-    trapezoid.lineTo(w, 0);
-    trapezoid.lineTo(w * 0.8, h);
-    trapezoid.lineTo(w * 0.2, h);
+    trapezoid.lineTo(w * 0.5, h * 0.15);
+    trapezoid.lineTo(w * 0.5, h * 0.85);
+    trapezoid.lineTo(0, h);
     trapezoid.close();
 
     if (index == 0) return trapezoid;
@@ -1491,49 +1491,58 @@ class SlantedClipper extends CustomClipper<Path> {
 }
 
 class ParallelogramClipper extends CustomClipper<Path> {
-  final double shift;
+  final double? shift;
   final int index;
   final int totalCount;
-  ParallelogramClipper({this.shift = 0.2, required this.index, this.totalCount = 2});
+  final double inset;
+  ParallelogramClipper({this.shift = 0.15, required this.index, this.totalCount = 2, this.inset = 0.0});
+
+  static Path getParallelogramPath(int index, Size size, int totalCount, {double? shiftRatio, double inset = 0.0}) {
+    final double w = size.width;
+    final double h = size.height;
+    final path = Path();
+    
+    // Slanted dividers cutting the canvas from top to bottom
+    double s = w * (shiftRatio ?? 0.15); 
+    
+    // Calculate the top and bottom x-coordinates of the slanted dividers
+    double getXTop(int idx) => (w / totalCount) * idx + s / 2;
+    double getXBot(int idx) => (w / totalCount) * idx - s / 2;
+
+    // Apply exact inset. 
+    // Horizontal inset along slanted line = inset * sec(slant angle)
+    double length = math.sqrt(s * s + h * h);
+    double slantInsetX = inset * length / h;
+    double vertInsetX = inset;
+    
+    double topY = inset;
+    double botY = h - inset;
+
+    // Left edge
+    double xTopLeft = index == 0 ? vertInsetX : getXTop(index) + slantInsetX;
+    double xBotLeft = index == 0 ? vertInsetX : getXBot(index) + slantInsetX;
+    
+    // Right edge
+    double xTopRight = index == totalCount - 1 ? w - vertInsetX : getXTop(index + 1) - slantInsetX;
+    double xBotRight = index == totalCount - 1 ? w - vertInsetX : getXBot(index + 1) - slantInsetX;
+
+    path.moveTo(xTopLeft, topY);
+    path.lineTo(xTopRight, topY);
+    path.lineTo(xBotRight, botY);
+    path.lineTo(xBotLeft, botY);
+    path.close();
+    
+    return path;
+  }
 
   @override
   Path getClip(Size size) {
-    final path = Path();
-    double w = size.width;
-    double h = size.height;
-    double s = shift * w;
-
-    if (totalCount == 5) {
-      // 5-image row of leaning parallelograms
-      double unitW = w / 5;
-      double x0 = index * unitW;
-      double x1 = (index + 1) * unitW;
-      
-      // All internal lines lean by 's'
-      path.moveTo(x0 + (index == 0 ? 0 : s), 0);
-      path.lineTo(x1 + (index == 4 ? 0 : s), 0);
-      path.lineTo(x1 - (index == 4 ? 0 : s) + s, h); // Shift bottom too to keep parallel
-      path.lineTo(x0 - (index == 0 ? 0 : s) + s, h);
-      path.close();
-      return path;
-    }
-
-    final split = Path();
-    split.moveTo(s, 0);
-    split.lineTo(w, 0);
-    split.lineTo(w - s, h);
-    split.lineTo(0, h);
-    split.close();
-
-    if (index == 0) return split;
-
-    path.addRect(Rect.fromLTWH(0, 0, w, h));
-    return Path.combine(PathOperation.difference, path, split);
+    return getParallelogramPath(index, size, totalCount, shiftRatio: shift, inset: inset);
   }
 
   @override
   bool shouldReclip(ParallelogramClipper old) =>
-      old.shift != shift || old.index != index || old.totalCount != totalCount;
+      old.shift != shift || old.index != index || old.totalCount != totalCount || old.inset != inset;
 }
 
 class CapsuleClipper extends CustomClipper<Path> {
@@ -1670,6 +1679,15 @@ class OrganicBlobClipper extends CustomClipper<Path> {
         effectiveW = w * 0.35; effectiveH = h * 0.35;
         xOffset = w * 0.57; yOffset = h * 0.57; rotation = -0.05;
       }
+    } else if (totalCount == 2) {
+      // Perfect "Yin & Yang" balance for Organic Pair
+      if (index == 0) {
+        effectiveW = w * 0.55; effectiveH = h * 0.55;
+        xOffset = w * 0.05; yOffset = h * 0.05; rotation = 0.08;
+      } else {
+        effectiveW = w * 0.55; effectiveH = h * 0.55;
+        xOffset = w * 0.4; yOffset = h * 0.4; rotation = -0.1;
+      }
     } else if (totalCount > 1) {
       int cols = (totalCount > 2) ? 2 : 1;
       xOffset = (index % cols) * (w / cols) * 0.45;
@@ -1737,29 +1755,62 @@ class ArtisticNatureClipper extends CustomClipper<Path> {
     double x = 0.5, y = 0.5, size = 0.5, rotation = 0.0;
 
     if (totalCount == 2) {
-      if (index == 0) { x = 0.32; y = 0.38; size = 0.65; rotation = -0.12; }
-      else { x = 0.70; y = 0.28; size = 0.48; rotation = 0.18; }
+      if (index == 0) { x = 0.35; y = 0.60; size = 0.50; rotation = -0.15; }
+      else { x = 0.65; y = 0.30; size = 0.45; rotation = 0.20; }
     } else if (totalCount == 3) {
-      if (index == 0) { x = 0.50; y = 0.45; size = 0.60; rotation = 0.05; }
-      else if (index == 1) { x = 0.20; y = 0.25; size = 0.45; rotation = -0.25; }
-      else { x = 0.80; y = 0.70; size = 0.52; rotation = 0.22; }
+      if (index == 0) { x = 0.28; y = 0.25; size = 0.42; rotation = -0.20; }
+      else if (index == 1) { x = 0.70; y = 0.50; size = 0.45; rotation = 0.15; }
+      else { x = 0.35; y = 0.75; size = 0.40; rotation = -0.10; }
     } else if (totalCount == 4) {
-      if (index == 0) { x = 0.25; y = 0.30; size = 0.50; rotation = -0.18; }
-      else if (index == 1) { x = 0.75; y = 0.25; size = 0.48; rotation = 0.12; }
-      else if (index == 2) { x = 0.30; y = 0.72; size = 0.44; rotation = 0.15; }
-      else { x = 0.78; y = 0.75; size = 0.55; rotation = -0.12; }
+      if (index == 0) { x = 0.25; y = 0.25; size = 0.42; rotation = -0.18; }
+      else if (index == 1) { x = 0.75; y = 0.28; size = 0.40; rotation = 0.22; }
+      else if (index == 2) { x = 0.28; y = 0.72; size = 0.42; rotation = 0.12; }
+      else { x = 0.72; y = 0.75; size = 0.38; rotation = -0.15; }
     } else if (totalCount == 5) {
-      if (index == 0) { x = 0.50; y = 0.50; size = 0.58; rotation = 0.00; }
-      else if (index == 1) { x = 0.15; y = 0.20; size = 0.44; rotation = -0.28; }
-      else if (index == 2) { x = 0.85; y = 0.18; size = 0.46; rotation = 0.28; }
-      else if (index == 3) { x = 0.20; y = 0.80; size = 0.42; rotation = 0.22; }
-      else { x = 0.80; y = 0.82; size = 0.50; rotation = -0.18; }
+      if (index == 0) { x = 0.50; y = 0.50; size = 0.30; rotation = 0.08; }
+      else if (index == 1) { x = 0.18; y = 0.18; size = 0.28; rotation = -0.15; }
+      else if (index == 2) { x = 0.82; y = 0.18; size = 0.28; rotation = 0.20; }
+      else if (index == 3) { x = 0.18; y = 0.82; size = 0.28; rotation = 0.15; }
+      else { x = 0.82; y = 0.82; size = 0.28; rotation = -0.10; }
     } else {
       // Dynamic fallback for >5 images
       x = (0.2 + (index * 0.33)) % 0.7 + 0.15;
       y = (0.2 + (index * 0.41)) % 0.7 + 0.15;
-      size = 0.4 + (index % 2 == 0 ? 0.08 : 0.0);
+      size = 0.35 + (index % 2 == 0 ? 0.05 : 0.0);
       rotation = (index * 0.6) % 1.2 - 0.6;
+    }
+
+    return {
+      'x': x * w,
+      'y': y * h,
+      'size': size * w,
+      'rotation': rotation,
+    };
+  }
+
+  /// Centralized source of truth for Leaf Fusion positioning and radiating design.
+  static Map<String, double> getLeafParams(int index, int totalCount, double w, double h) {
+    // All petals originate from the exact center for a perfect bloom
+    double x = 0.5;
+    double y = 0.5;
+    double size = 0.50;
+    double rotation = 0.0;
+
+    if (totalCount == 2) {
+      size = 0.55;
+      rotation = (index * math.pi) + math.pi / 2;
+    } else if (totalCount == 3) {
+      size = 0.52;
+      rotation = (index * 2 * math.pi / 3) + math.pi;
+    } else if (totalCount == 4) {
+      size = 0.50;
+      rotation = (index * math.pi / 2) + math.pi / 4;
+    } else if (totalCount == 5) {
+      size = 0.50;
+      rotation = (index * 2 * math.pi / 5) + math.pi;
+    } else {
+      size = 0.45;
+      rotation = index * 2 * math.pi / totalCount;
     }
 
     return {
@@ -1776,29 +1827,30 @@ class ArtisticNatureClipper extends CustomClipper<Path> {
 
     // A clustered "Bouquet" composition near the top center
     if (totalCount == 2) {
-      if (index == 0) { x = 0.42; y = 0.28; size = 0.44; rotation = -0.12; }
-      else { x = 0.58; y = 0.22; size = 0.44; rotation = 0.12; }
+      if (index == 0) { x = 0.32; y = 0.25; size = 0.38; rotation = -0.15; }
+      else { x = 0.68; y = 0.35; size = 0.38; rotation = 0.15; }
     } else if (totalCount == 3) {
-      if (index == 0) { x = 0.50; y = 0.18; size = 0.46; rotation = 0.00; }
-      else if (index == 1) { x = 0.38; y = 0.38; size = 0.40; rotation = -0.22; }
-      else { x = 0.62; y = 0.38; size = 0.40; rotation = 0.22; }
+      if (index == 0) { x = 0.50; y = 0.12; size = 0.36; rotation = 0.00; }
+      else if (index == 1) { x = 0.22; y = 0.38; size = 0.34; rotation = -0.18; }
+      else { x = 0.78; y = 0.38; size = 0.34; rotation = 0.18; }
     } else if (totalCount == 4) {
-      if (index == 0) { x = 0.44; y = 0.16; size = 0.42; rotation = -0.08; }
-      else if (index == 1) { x = 0.56; y = 0.16; size = 0.42; rotation = 0.08; }
-      else if (index == 2) { x = 0.32; y = 0.42; size = 0.38; rotation = -0.28; }
-      else { x = 0.68; y = 0.42; size = 0.38; rotation = 0.28; }
+      if (index == 0) { x = 0.28; y = 0.15; size = 0.32; rotation = -0.15; }
+      else if (index == 1) { x = 0.72; y = 0.15; size = 0.32; rotation = 0.15; }
+      else if (index == 2) { x = 0.28; y = 0.55; size = 0.32; rotation = -0.05; }
+      else { x = 0.72; y = 0.55; size = 0.32; rotation = 0.05; }
     } else if (totalCount == 5) {
-      if (index == 0) { x = 0.50; y = 0.14; size = 0.42; rotation = 0.00; }
-      else if (index == 1) { x = 0.35; y = 0.28; size = 0.38; rotation = -0.18; }
-      else if (index == 2) { x = 0.65; y = 0.28; size = 0.38; rotation = 0.18; }
-      else if (index == 3) { x = 0.42; y = 0.48; size = 0.35; rotation = -0.32; }
-      else { x = 0.58; y = 0.48; size = 0.35; rotation = 0.32; }
+      // Clean non-overlapping geometrical burst structure
+      if (index == 0) { x = 0.50; y = 0.08; size = 0.30; rotation = 0.00; }
+      else if (index == 1) { x = 0.18; y = 0.28; size = 0.28; rotation = -0.22; }
+      else if (index == 2) { x = 0.82; y = 0.28; size = 0.28; rotation = 0.22; }
+      else if (index == 3) { x = 0.32; y = 0.58; size = 0.28; rotation = -0.10; }
+      else { x = 0.68; y = 0.58; size = 0.28; rotation = 0.10; }
     } else {
       // Fallback
-      x = (0.3 + (index * 0.1)) % 0.4 + 0.3;
-      y = (0.2 + (index * 0.1)) % 0.6 + 0.1;
-      size = 0.4;
-      rotation = (index * 0.2) - 0.5;
+      x = (0.2 + (index * 0.15)) % 0.6 + 0.2;
+      y = (0.15 + (index * 0.15)) % 0.5 + 0.15;
+      size = 0.30;
+      rotation = (index * 0.15) - 0.3;
     }
 
     return {
@@ -1817,9 +1869,9 @@ class ArtisticNatureClipper extends CustomClipper<Path> {
 
     if (mode == 'hearts_flower') {
       if (totalCount == 5) {
-        // Geometric Heart Flower: 5 petals pointing inward to the center
-        final double s = w * 0.32; 
-        final double R = s * 1.05; // Distance from center to heart top dip
+        // Geometric Heart Flower: 5 petals overlapping beautifully in the center
+        final double s = w * 0.40; // Larger petals to create a full flower
+        final double R = s * 0.88; // Reduced distance so the tips overlap at the center
         final double cx = w * 0.5;
         final double cy = h * 0.5;
         final double theta = -math.pi / 2 + (2 * math.pi / 5) * index;
@@ -1855,14 +1907,13 @@ class ArtisticNatureClipper extends CustomClipper<Path> {
         rotation: params['rotation']!,
       );
     } else if (mode == 'leaf_fusion') {
-      // Petiole-based organic leaf arrangement
-      double centerX = w * 0.5;
-      double centerY = h * 0.5;
-      double radius = w * 0.32;
-      double angle = (2 * math.pi / totalCount) * index;
-      double lx = centerX + radius * math.cos(angle);
-      double ly = centerY + radius * math.sin(angle);
-      return _getLeafPath(lx, ly, radius * 1.5, rotation: angle + math.pi / 2);
+      final params = getLeafParams(index, totalCount, w, h);
+      return _getLeafPath(
+        params['x']!,
+        params['y']!,
+        params['size']!,
+        rotation: params['rotation']!,
+      );
     } else if (mode == 'maple_trio') {
       if (index == 0) {
         return _getMapleLeafPath(w * 0.5, h * 0.28, w * 0.35);
@@ -1880,12 +1931,12 @@ class ArtisticNatureClipper extends CustomClipper<Path> {
     final path = Path();
     double s = size;
 
-    // Organic leaf shape centered at x,y
+    // Beautiful rounded teardrop/petal shape for the "leaf flower"
     path.moveTo(x, y);
-    // Left side of leaf
-    path.quadraticBezierTo(x - s * 0.4, y + s * 0.3, x, y + s * 0.8);
-    // Right side of leaf
-    path.quadraticBezierTo(x + s * 0.4, y + s * 0.3, x, y);
+    // Left plump curve
+    path.cubicTo(x - s * 0.7, y + s * 0.25, x - s * 0.5, y + s * 0.75, x, y + s * 0.90);
+    // Right plump curve
+    path.cubicTo(x + s * 0.5, y + s * 0.75, x + s * 0.7, y + s * 0.25, x, y);
     path.close();
 
     if (rotation != 0) {
@@ -2416,57 +2467,45 @@ class ILoveUClipper extends CustomClipper<Path> {
 
 class FilmStripClipper extends CustomClipper<Path> {
   final int index;
-  FilmStripClipper({required this.index});
+  final int totalCount;
+  FilmStripClipper({required this.index, this.totalCount = 2});
 
-  static Path getFilmStripPath(int index, Size size) {
+  static Path getFilmStripPath(int index, Size size, int totalCount) {
     final double w = size.width;
     final double h = size.height;
+    final path = Path();
 
-    // Use a vertical arrangement of 3 tilted frames
-    // Frame 0: Top, tilted right
-    // Frame 1: Mid, tilted left
-    // Frame 2: Bot, tilted right
-
-    double frameW = w * 0.88;
-    double frameH = h * 0.28;
-    double cx = w * 0.5;
-    double cy;
-    double angle;
-
-    if (index == 0) {
-      cy = h * 0.18;
-      angle = 0.06; // ~3.5 degrees
-    } else if (index == 1) {
-      cy = h * 0.5;
-      angle = -0.06;
-    } else {
-      cy = h * 0.82;
-      angle = 0.06;
-    }
-
-    // This is the IMAGE area path (inner part of the frame)
-    double imgW = frameW * 0.8;
-    double imgH = frameH * 0.9;
+    // High-fidelity Vertical Cinematic Strip (Dynamic Images)
+    double frameW = w * 0.70;
+    double startX = w * 0.15;
     
-    Rect imgRect = Rect.fromCenter(center: Offset.zero, width: imgW, height: imgH);
-    Path path = Path()..addRect(imgRect);
-
-    // Rotate and translate to position
-    final matrix = Matrix4.identity()
-      ..translate(cx, cy)
-      ..rotateZ(angle);
+    // We reserve space at top (8%) and bottom (8%)
+    double topPadding = h * 0.08;
+    double bottomPadding = h * 0.08;
+    double availableHeight = h - topPadding - bottomPadding;
     
-    return path.transform(matrix.storage);
+    // Consistent spacing between frames
+    double gapRatio = 0.08; // Total gap space as a ratio of available height
+    double totalGap = availableHeight * gapRatio;
+    double frameH = (availableHeight - totalGap) / totalCount;
+    double spacing = totalCount > 1 ? totalGap / (totalCount - 1) : 0;
+    
+    double startY = topPadding + (index * (frameH + spacing));
+
+    path.addRect(Rect.fromLTWH(startX, startY, frameW, frameH));
+
+    return path;
   }
 
   @override
   Path getClip(Size size) {
-    return getFilmStripPath(index, size);
+    return getFilmStripPath(index, size, totalCount);
   }
 
   @override
-  bool shouldReclip(FilmStripClipper old) => index != old.index;
+  bool shouldReclip(FilmStripClipper old) => index != old.index || totalCount != old.totalCount;
 }
+
 
 class TornPaperClipper extends CustomClipper<Path> {
   final int index;
@@ -2556,9 +2595,8 @@ class TornDiagonalClipper extends CustomClipper<Path> {
 
   @override
   Path getClip(Size size) {
-    const double inset = 5.0;
-    final double w = size.width - inset * 2;
-    final double h = size.height - inset * 2;
+    final double w = size.width;
+    final double h = size.height;
 
     // Define the jagged strip path
     final topPoints = TornPaperClipper._getJaggedPoints(
@@ -2582,13 +2620,11 @@ class TornDiagonalClipper extends CustomClipper<Path> {
     for (var p in bottomPoints) closedStrip.lineTo(p.dx, p.dy);
     closedStrip.close();
 
-    final shiftedStrip = closedStrip.shift(const Offset(inset, inset));
-
-    if (index == 1) return shiftedStrip;
+    if (index == 1) return closedStrip;
 
     final path = Path();
     path.addRect(Rect.fromLTWH(0, 0, size.width, size.height));
-    return Path.combine(PathOperation.difference, path, shiftedStrip);
+    return Path.combine(PathOperation.difference, path, closedStrip);
   }
 
   @override
@@ -3989,72 +4025,73 @@ class FanBurst5Clipper extends CustomClipper<Path> {
   Path getClip(Size size) => getFanBurst5Path(index, size);
 
   static Path getFanBurst5Path(int index, Size size) {
-    double w = size.width;
-    double h = size.height;
-    // Move vertex even further left to make the triangle cut smaller
-    Offset v = Offset(w * 0.12, h * 0.46);
+    final double w = size.width;
+    final double h = size.height;
+    final double cx = w * 0.5;
+    final double cy = h * 0.5;
 
-    List<List<Offset>> polygons = [
-      [v, Offset(0, h * 0.2), Offset.zero, Offset(w * 0.85, 0)],   // TL/Top
-      [v, Offset(w * 0.85, 0), Offset(w, 0), Offset(w, h * 0.65)], // TR/Right
-      [v, Offset(w, h * 0.65), Offset(w, h), Offset(w * 0.42, h)], // BR/Bottom
-      [v, Offset(w * 0.42, h), Offset(0, h), Offset(0, h * 0.72)], // BL
-      [v, Offset(0, h * 0.72), Offset(0, h * 0.2)],               // L (Middle Left)
-    ];
-
-    if (index >= polygons.length) return Path();
-
-    List<Offset> pts = polygons[index];
+    final double outerR = math.sqrt(w * w + h * h) * 1.1;
+    const double totalSlices = 5;
+    final double sliceAngle = 360.0 / totalSlices;
     
-    // Calculate centroid to assist in uniform insetting
-    double avgX = 0, avgY = 0;
-    for (var p in pts) { avgX += p.dx; avgY += p.dy; }
-    Offset centroid = Offset(avgX / pts.length, avgY / pts.length);
+    double degToRad(double deg) => deg * math.pi / 180.0;
 
-    double inset = w * 0.012; // Gap size
-    Path path = Path();
-    
-    // Inset each point towards the centroid for a more uniform gap
-    List<Offset> insetPts = pts.map((p) {
-       Offset dir = p - centroid;
-       double d = dir.distance;
-       if (d < 1) return p;
-       return p - dir * (inset / d);
-    }).toList();
+    final double startAngle = sliceAngle * index - 90.0;
+    final double endAngle = startAngle + sliceAngle;
 
-    path.moveTo(insetPts[0].dx, insetPts[0].dy);
-    for (int i = 1; i < insetPts.length; i++) {
-      path.lineTo(insetPts[i].dx, insetPts[i].dy);
-    }
+    final path = Path();
+    final double innerR = w * 0.015;
+
+    // Trace the jagged "Left" side
+    addJaggedRadialLine(path, cx, cy, innerR, outerR, startAngle);
+
+    // Arc at the very far edge
+    path.arcTo(
+      Rect.fromCircle(center: Offset(cx, cy), radius: outerR),
+      degToRad(startAngle),
+      degToRad(endAngle - startAngle),
+      false,
+    );
+
+    // Trace the jagged "Right" side back to center
+    addJaggedRadialLine(path, cx, cy, innerR, outerR, endAngle, reverse: true);
+
     path.close();
-
     return path;
+  }
+
+  static void addJaggedRadialLine(Path p, double cx, double cy, double radius1, double radius2, double angleDeg, {bool reverse = false}) {
+    const int steps = 12; 
+    const double amplitude = 6.0; 
+    
+    // Convert degrees to radians
+    double degToRad(double deg) => deg * math.pi / 180.0;
+    
+    List<Offset> pts = [];
+    for (int i = 0; i <= steps; i++) {
+      double t = i / steps;
+      double r = radius1 + (radius2 - radius1) * t;
+      double offset = math.sin(t * math.pi * 5) * amplitude; 
+      double angle = degToRad(angleDeg);
+      double perpAngle = angle + math.pi / 2;
+      
+      pts.add(Offset(
+        cx + r * math.cos(angle) + offset * math.cos(perpAngle),
+        cy + r * math.sin(angle) + offset * math.sin(perpAngle),
+      ));
+    }
+    
+    if (reverse) pts = pts.reversed.toList();
+    for (int i = 0; i < pts.length; i++) {
+      if (i == 0 && !reverse) p.moveTo(pts[i].dx, pts[i].dy);
+      else p.lineTo(pts[i].dx, pts[i].dy);
+    }
   }
 
   @override
   bool shouldReclip(FanBurst5Clipper oldClipper) => index != oldClipper.index;
 }
 
-class FanBurst5Painter extends CustomPainter {
-  final Color color;
-  final double width;
-  FanBurst5Painter({required this.color, required this.width});
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = width
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    for (int i = 0; i < 5; i++) {
-      canvas.drawPath(FanBurst5Clipper.getFanBurst5Path(i, size), paint);
-    }
-  }
-  @override
-  bool shouldRepaint(FanBurst5Painter oldDelegate) => true;
-}
 
 class ComicBurst5Clipper extends CustomClipper<Path> {
   final int index;
@@ -5319,4 +5356,119 @@ class DiagonalStarPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(DiagonalStarPainter old) => old.color != color || old.width != width;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// BOOK 3D — Perspective open book split
+// ──────────────────────────────────────────────────────────────────────────────
+class Book3DClipper extends CustomClipper<Path> {
+  final int index;
+  Book3DClipper({required this.index});
+
+  static Path getPath(int index, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final path = Path();
+
+    // Perspective coordinates for "Folded Page" effect
+    if (index == 0) {
+      // Left Page (Tapering towards center)
+      path.moveTo(w * 0.05, h * 0.08);
+      path.lineTo(w * 0.485, h * 0.15);
+      path.lineTo(w * 0.485, h * 0.85);
+      path.lineTo(w * 0.05, h * 0.92);
+      path.close();
+    } else {
+      // Right Page
+      path.moveTo(w * 0.515, h * 0.15);
+      path.lineTo(w * 0.95, h * 0.08);
+      path.lineTo(w * 0.95, h * 0.92);
+      path.lineTo(w * 0.515, h * 0.85);
+      path.close();
+    }
+    return path;
+  }
+
+  @override
+  Path getClip(Size size) => getPath(index, size);
+
+  @override
+  bool shouldReclip(Book3DClipper old) => old.index != index;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// PRISM 3D — Dual-faceted perspective split
+// ──────────────────────────────────────────────────────────────────────────────
+class PrismClipper extends CustomClipper<Path> {
+  final int index;
+  PrismClipper({required this.index});
+
+  static Path getPath(int index, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final path = Path();
+
+    // Perspective ridge shifted to 0.65w for a "side-view" look
+    if (index == 0) {
+      // Left/Front Facet (Prominent)
+      path.moveTo(0, 0);
+      path.lineTo(w * 0.65, h * 0.08);
+      path.lineTo(w * 0.65, h * 0.92);
+      path.lineTo(0, h);
+      path.close();
+    } else {
+      // Right/Side Facet (Receding)
+      path.moveTo(w * 0.65, h * 0.08);
+      path.lineTo(w, 0);
+      path.lineTo(w, h);
+      path.lineTo(w * 0.65, h * 0.92);
+      path.close();
+    }
+    return path;
+  }
+
+  @override
+  Path getClip(Size size) => getPath(index, size);
+
+  @override
+  bool shouldReclip(PrismClipper old) => old.index != index;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// MAGAZINE SPREAD — 2 Page dual split layout for magazine overlays
+// ──────────────────────────────────────────────────────────────────────────────
+class MagazineSpreadClipper extends CustomClipper<Path> {
+  final int index;
+  final double inset;
+  MagazineSpreadClipper({required this.index, this.inset = 0.0});
+
+  static Path getPath(int index, Size size, {double inset = 0.0}) {
+    final double w = size.width;
+    final double h = size.height;
+    final path = Path();
+    
+    // Simple vertical split at w/2
+    double topY = inset;
+    double botY = h - inset;
+    
+    if (index == 0) {
+      path.moveTo(inset, topY);
+      path.lineTo(w * 0.5 - inset, topY);
+      path.lineTo(w * 0.5 - inset, botY);
+      path.lineTo(inset, botY);
+    } else {
+      path.moveTo(w * 0.5 + inset, topY);
+      path.lineTo(w - inset, topY);
+      path.lineTo(w - inset, botY);
+      path.lineTo(w * 0.5 + inset, botY);
+    }
+    path.close();
+    return path;
+  }
+
+  @override
+  Path getClip(Size size) => getPath(index, size, inset: inset);
+
+  @override
+  bool shouldReclip(MagazineSpreadClipper old) => old.index != index || old.inset != inset;
 }
