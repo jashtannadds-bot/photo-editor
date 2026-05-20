@@ -384,13 +384,7 @@ final List<CollageLayoutDef> layouts2 = [
     imageCount: 2,
     cells: [CellRect(0.05, 0.05, 0.9, 0.6), CellRect(0.05, 0.7, 0.9, 0.25)],
   ),
-  const CollageLayoutDef(
-    name: 'Hearts Flower',
-    icon: Icons.filter_vintage_rounded,
-    isClipBased: true,
-    clipType: 'hearts_flower',
-    imageCount: 2,
-  ),
+
   const CollageLayoutDef(
     name: 'Hearts Balloon',
     icon: Icons.bubble_chart_rounded,
@@ -412,13 +406,7 @@ final List<CollageLayoutDef> layouts2 = [
     clipType: 'leaf_fusion',
     imageCount: 2,
   ),
-  const CollageLayoutDef(
-    name: 'Artistic Hands',
-    icon: Icons.gesture_rounded,
-    isClipBased: true,
-    clipType: 'artistic_hands_2',
-    imageCount: 2,
-  ),
+
   const CollageLayoutDef(
     name: 'Interlocking Locks',
     icon: Icons.lock_outline_rounded,
@@ -447,13 +435,7 @@ final List<CollageLayoutDef> layouts3 = [
     clipType: 'zigzag_band',
     imageCount: 3,
   ),
-  const CollageLayoutDef(
-    name: 'Spiky Zigzag',
-    icon: Icons.show_chart_rounded,
-    isClipBased: true,
-    clipType: 'spiky_zigzag',
-    imageCount: 3,
-  ),
+
   const CollageLayoutDef(
     name: 'Diagonal Heart',
     icon: Icons.favorite_border_rounded,
@@ -569,28 +551,6 @@ final List<CollageLayoutDef> layouts3 = [
       CellRect(0.0, 0.667, 1.0, 0.333),
     ],
   ),
-  // 7. Big left (60%) + 2 small right stacked
-  const CollageLayoutDef(
-    name: 'Left Dominant',
-    icon: Icons.view_sidebar_rounded,
-    imageCount: 3,
-    cells: [
-      CellRect(0.0, 0.0, 0.6, 1.0),
-      CellRect(0.6, 0.0, 0.4, 0.5),
-      CellRect(0.6, 0.5, 0.4, 0.5),
-    ],
-  ),
-  // 8. Big right (60%) + 2 small left stacked
-  const CollageLayoutDef(
-    name: 'Right Dominant',
-    icon: Icons.view_sidebar_rounded,
-    imageCount: 3,
-    cells: [
-      CellRect(0.0, 0.0, 0.4, 0.5),
-      CellRect(0.0, 0.5, 0.4, 0.5),
-      CellRect(0.4, 0.0, 0.6, 1.0),
-    ],
-  ),
   // 9. Big top (65%) + 2 bottom
   const CollageLayoutDef(
     name: 'Top Focus',
@@ -619,9 +579,9 @@ final List<CollageLayoutDef> layouts3 = [
     icon: Icons.view_compact_rounded,
     imageCount: 3,
     cells: [
-      CellRect(0.0, 0.0, 1.0, 0.55),
-      CellRect(0.0, 0.55, 0.4, 0.45),
-      CellRect(0.4, 0.55, 0.6, 0.45),
+      CellRect(0.0, 0.0, 1.0, 0.40),
+      CellRect(0.0, 0.40, 0.5, 0.60),
+      CellRect(0.5, 0.40, 0.5, 0.60),
     ],
   ),
   // 12. Inverted T
@@ -630,9 +590,9 @@ final List<CollageLayoutDef> layouts3 = [
     icon: Icons.view_compact_rounded,
     imageCount: 3,
     cells: [
-      CellRect(0.0, 0.0, 0.6, 0.45),
-      CellRect(0.6, 0.0, 0.4, 0.45),
-      CellRect(0.0, 0.45, 1.0, 0.55),
+      CellRect(0.0, 0.0, 0.5, 0.60),
+      CellRect(0.5, 0.0, 0.5, 0.60),
+      CellRect(0.0, 0.60, 1.0, 0.40),
     ],
   ),
   // 13. L-shape
@@ -651,11 +611,8 @@ final List<CollageLayoutDef> layouts3 = [
     name: 'Sandwich',
     icon: Icons.view_day_rounded,
     imageCount: 3,
-    cells: [
-      CellRect(0.0, 0.0, 1.0, 0.25),
-      CellRect(0.0, 0.25, 1.0, 0.5),
-      CellRect(0.0, 0.75, 1.0, 0.25),
-    ],
+    isClipBased: true,
+    clipType: 'sandwich',
   ),
   // 15. Left strip + big center + right strip
   const CollageLayoutDef(
@@ -673,11 +630,8 @@ final List<CollageLayoutDef> layouts3 = [
     name: 'Staircase',
     icon: Icons.stairs_rounded,
     imageCount: 3,
-    cells: [
-      CellRect(0.0, 0.0, 0.5, 0.4),
-      CellRect(0.25, 0.35, 0.5, 0.35),
-      CellRect(0.5, 0.6, 0.5, 0.4),
-    ],
+    isClipBased: true,
+    clipType: 'staircase',
   ),
   // 17. Wide center column
   const CollageLayoutDef(
@@ -688,39 +642,6 @@ final List<CollageLayoutDef> layouts3 = [
       CellRect(0.0, 0.0, 0.25, 1.0),
       CellRect(0.25, 0.0, 0.55, 1.0),
       CellRect(0.8, 0.0, 0.2, 1.0),
-    ],
-  ),
-  // 18. Big left top + small right top + full bottom
-  const CollageLayoutDef(
-    name: 'Corner Focus',
-    icon: Icons.dashboard_rounded,
-    imageCount: 3,
-    cells: [
-      CellRect(0.0, 0.0, 0.65, 0.55),
-      CellRect(0.65, 0.0, 0.35, 0.55),
-      CellRect(0.0, 0.55, 1.0, 0.45),
-    ],
-  ),
-  // 19. Full left + small top-right + small bottom-right
-  const CollageLayoutDef(
-    name: 'Sidebar Stack',
-    icon: Icons.view_sidebar_rounded,
-    imageCount: 3,
-    cells: [
-      CellRect(0.0, 0.0, 0.55, 1.0),
-      CellRect(0.55, 0.0, 0.45, 0.4),
-      CellRect(0.55, 0.4, 0.45, 0.6),
-    ],
-  ),
-  // 20. Golden mix
-  const CollageLayoutDef(
-    name: 'Golden Frame',
-    icon: Icons.auto_awesome_mosaic_rounded,
-    imageCount: 3,
-    cells: [
-      CellRect(0.0, 0.0, 0.618, 0.618),
-      CellRect(0.618, 0.0, 0.382, 0.618),
-      CellRect(0.0, 0.618, 1.0, 0.382),
     ],
   ),
   const CollageLayoutDef(
@@ -801,16 +722,6 @@ final List<CollageLayoutDef> layouts3 = [
     isClipBased: true,
     clipType: 'blob1',
     imageCount: 3,
-  ),
-  const CollageLayoutDef(
-    name: 'Abstract Stairs',
-    icon: Icons.stairs_rounded,
-    imageCount: 3,
-    cells: [
-      CellRect(0.0, 0.0, 0.4, 0.4),
-      CellRect(0.3, 0.3, 0.4, 0.4),
-      CellRect(0.6, 0.6, 0.4, 0.4),
-    ],
   ),
   const CollageLayoutDef(
     name: 'Split Arch',
@@ -898,7 +809,7 @@ final List<CollageLayoutDef> layouts3 = [
     imageCount: 3,
   ),
   const CollageLayoutDef(
-    name: 'Cat Hearts',
+    name: 'Cat Trio',
     icon: Icons.pets,
     isClipBased: true,
     clipType: 'cat_hearts',
@@ -1639,13 +1550,8 @@ final List<CollageLayoutDef> layouts5 = [
     name: 'Staircase',
     icon: Icons.stairs_rounded,
     imageCount: 5,
-    cells: [
-      CellRect(0.0, 0.0, 0.33, 1.0),   // Far-Left Pillar
-      CellRect(0.33, 0.0, 0.34, 0.6),  // Mid-Pillar Top Step
-      CellRect(0.67, 0.0, 0.33, 0.3),  // Far-Right Top Step
-      CellRect(0.33, 0.6, 0.67, 0.4),  // Bottom Shared Foundation
-      CellRect(0.67, 0.3, 0.33, 0.3),  // Mid-Right Step Side
-    ],
+    isClipBased: true,
+    clipType: 'staircase',
   ),
   const CollageLayoutDef(
     name: 'DAD Heart',
