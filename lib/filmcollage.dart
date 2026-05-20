@@ -246,8 +246,8 @@ class _AuraCollageScreenState extends State<AuraCollageScreen> {
 
   Widget _buildFilmFrame(int index) {
     return Container(
-      height: 220,
-      margin: const EdgeInsets.only(bottom: 15, left: 10, right: 10),
+      height: 224,
+      margin: EdgeInsets.zero,
       child: Stack(
         children: [
           Padding(
@@ -322,40 +322,51 @@ class FilmStripPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final Paint holePaint = Paint()..color = Colors.black.withOpacity(0.8);
+    // 1. Define the film strip base (two vertical dark bands on the sides, plus the frame border)
+    final Paint stripPaint = Paint()
+      ..color = const Color(0xFF161616) // Sleek matte black
+      ..style = PaintingStyle.fill;
+
     final Paint borderPaint = Paint()
-      ..color = accentColor.withOpacity(0.3)
+      ..color = accentColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth;
 
-    double holeWidth = 10;
-    double holeHeight = 14;
-    double padding = 20;
+    double stripWidth = 45.0;
+    double holeWidth = 8.0;
+    double holeHeight = 12.0;
+    double holeLeftX = 18.5; // Centered within the 45px strip
+    double holeRightX = size.width - 18.5 - holeWidth;
 
-    for (double i = 10; i < size.height; i += 28) {
-      canvas.drawRRect(
+    // Create a path for the left and right film strip bands
+    Path stripsPath = Path()
+      ..addRect(Rect.fromLTWH(0, 0, stripWidth, size.height))
+      ..addRect(Rect.fromLTWH(size.width - stripWidth, 0, stripWidth, size.height));
+
+    // Create a path for all the sprocket holes
+    Path holesPath = Path();
+    for (double y = 10; y < size.height; y += 28) {
+      holesPath.addRRect(
         RRect.fromRectAndRadius(
-          Rect.fromLTWH(padding, i, holeWidth, holeHeight),
-          const Radius.circular(2),
+          Rect.fromLTWH(holeLeftX, y, holeWidth, holeHeight),
+          const Radius.circular(2.5),
         ),
-        holePaint,
       );
-      canvas.drawRRect(
+      holesPath.addRRect(
         RRect.fromRectAndRadius(
-          Rect.fromLTWH(
-            size.width - padding - holeWidth,
-            i,
-            holeWidth,
-            holeHeight,
-          ),
-          const Radius.circular(2),
+          Rect.fromLTWH(holeRightX, y, holeWidth, holeHeight),
+          const Radius.circular(2.5),
         ),
-        holePaint,
       );
     }
 
+    // Subtract the holes from the strips so the background shows through the holes!
+    Path finalStrips = Path.combine(PathOperation.difference, stripsPath, holesPath);
+    canvas.drawPath(finalStrips, stripPaint);
+
+    // Draw the inner borders around the image area
     canvas.drawRect(
-      Rect.fromLTWH(45, 0, size.width - 90, size.height),
+      Rect.fromLTWH(stripWidth, 0, size.width - stripWidth * 2, size.height),
       borderPaint,
     );
   }

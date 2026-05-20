@@ -83,8 +83,6 @@ class _HangingBulbCollageState extends State<HangingBulbCollage> {
 
   @override
   Widget build(BuildContext context) {
-    final Size size = MediaQuery.of(context).size;
-
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -126,63 +124,103 @@ class _HangingBulbCollageState extends State<HangingBulbCollage> {
                   key: _saveKey,
                   child: Container(
                     decoration: myStyle.activeBackground.decoration,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        // Lighting and String Painter
-                        CustomPaint(
-                          size: Size(size.width, size.height),
-                          painter: BulbStringPainter(
-                            accentColor: myStyle.borderColor,
-                          ),
-                        ),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final double w = constraints.maxWidth;
+                        final double h = constraints.maxHeight;
 
-                        // The Hanging Photos
-                        _hangingPhoto(
-                          0,
-                          top: 100,
-                          left: size.width * 0.04,
-                          angle: -0.06,
-                        ),
-                        _hangingPhoto(
-                          1,
-                          top: 125,
-                          left: size.width * 0.36,
-                          angle: 0.04,
-                        ),
-                        _hangingPhoto(
-                          2,
-                          top: 100,
-                          left: size.width * 0.68,
-                          angle: -0.04,
-                        ),
-                        _hangingPhoto(
-                          3,
-                          top: 400,
-                          left: size.width * 0.12,
-                          angle: 0.05,
-                        ),
-                        _hangingPhoto(
-                          4,
-                          top: 410,
-                          left: size.width * 0.55,
-                          angle: -0.06,
-                        ),
+                        // Dynamic photo width
+                        final double photoWidth = (w * 0.28).clamp(100.0, 160.0);
 
-                        // Floating Text Layer
-                        for (int i = 0; i < textItems.length; i++)
-                          DraggableTextWidget(
-                            properties: textItems[i],
-                            onTap: () => _handleTextAction(
-                              existing: textItems[i],
-                              index: i,
+                        // Row 1 parameters
+                        final double r1StartY = h * 0.12;
+                        final double r1CtrlY = h * 0.20;
+                        final List<double> r1Bulbs = [0.18, 0.50, 0.82];
+
+                        // Row 2 parameters
+                        final double r2StartY = h * 0.52;
+                        final double r2CtrlY = h * 0.60;
+                        final List<double> r2Bulbs = [0.32, 0.68];
+
+                        // Helper to calculate Bezier Y position at t
+                        double getBezierY(double t, double startY, double ctrlY) {
+                          return (1 - t) * (1 - t) * startY + 2 * (1 - t) * t * ctrlY + t * t * startY;
+                        }
+
+                        return Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            // Lighting and String Painter
+                            CustomPaint(
+                              size: Size(w, h),
+                              painter: BulbStringPainter(
+                                accentColor: myStyle.borderColor,
+                                width: w,
+                                height: h,
+                                row1StartY: r1StartY,
+                                row1CtrlY: r1CtrlY,
+                                row1Bulbs: r1Bulbs,
+                                row2StartY: r2StartY,
+                                row2CtrlY: r2CtrlY,
+                                row2Bulbs: r2Bulbs,
+                              ),
                             ),
-                            onDragStatusChanged: (dragging) =>
-                                setState(() => isDraggingText = dragging),
-                            onDelete: () =>
-                                setState(() => textItems.removeAt(i)),
-                          ),
-                      ],
+
+                            // Row 1 Photos
+                            _hangingPhoto(
+                              0,
+                              top: getBezierY(0.18, r1StartY, r1CtrlY),
+                              left: w * 0.18 - photoWidth / 2,
+                              photoWidth: photoWidth,
+                              angle: -0.06,
+                            ),
+                            _hangingPhoto(
+                              1,
+                              top: getBezierY(0.50, r1StartY, r1CtrlY),
+                              left: w * 0.50 - photoWidth / 2,
+                              photoWidth: photoWidth,
+                              angle: 0.04,
+                            ),
+                            _hangingPhoto(
+                              2,
+                              top: getBezierY(0.82, r1StartY, r1CtrlY),
+                              left: w * 0.82 - photoWidth / 2,
+                              photoWidth: photoWidth,
+                              angle: -0.04,
+                            ),
+
+                            // Row 2 Photos
+                            _hangingPhoto(
+                              3,
+                              top: getBezierY(0.32, r2StartY, r2CtrlY),
+                              left: w * 0.32 - photoWidth / 2,
+                              photoWidth: photoWidth,
+                              angle: 0.05,
+                            ),
+                            _hangingPhoto(
+                              4,
+                              top: getBezierY(0.68, r2StartY, r2CtrlY),
+                              left: w * 0.68 - photoWidth / 2,
+                              photoWidth: photoWidth,
+                              angle: -0.06,
+                            ),
+
+                            // Floating Text Layer
+                            for (int i = 0; i < textItems.length; i++)
+                              DraggableTextWidget(
+                                properties: textItems[i],
+                                onTap: () => _handleTextAction(
+                                  existing: textItems[i],
+                                  index: i,
+                                ),
+                                onDragStatusChanged: (dragging) =>
+                                    setState(() => isDraggingText = dragging),
+                                onDelete: () =>
+                                    setState(() => textItems.removeAt(i)),
+                              ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -266,6 +304,7 @@ class _HangingBulbCollageState extends State<HangingBulbCollage> {
     int index, {
     required double top,
     required double left,
+    required double photoWidth,
     double angle = 0,
   }) {
     return Positioned(
@@ -289,7 +328,7 @@ class _HangingBulbCollageState extends State<HangingBulbCollage> {
             ),
             // The Polaroid Frame
             Container(
-              width: 115,
+              width: photoWidth,
               padding: EdgeInsets.fromLTRB(
                 myStyle.borderWidth,
                 myStyle.borderWidth,
@@ -300,9 +339,9 @@ class _HangingBulbCollageState extends State<HangingBulbCollage> {
                 color: myStyle.borderColor,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.5),
-                    blurRadius: 15,
-                    offset: const Offset(6, 6),
+                    color: Colors.black.withOpacity(0.4),
+                    blurRadius: 12,
+                    offset: const Offset(4, 8),
                   ),
                 ],
               ),
@@ -343,51 +382,94 @@ class _HangingBulbCollageState extends State<HangingBulbCollage> {
 
 class BulbStringPainter extends CustomPainter {
   final Color accentColor;
-  BulbStringPainter({required this.accentColor});
+  final double width;
+  final double height;
+  final double row1StartY;
+  final double row1CtrlY;
+  final List<double> row1Bulbs;
+  final double row2StartY;
+  final double row2CtrlY;
+  final List<double> row2Bulbs;
+
+  BulbStringPainter({
+    required this.accentColor,
+    required this.width,
+    required this.height,
+    required this.row1StartY,
+    required this.row1CtrlY,
+    required this.row1Bulbs,
+    required this.row2StartY,
+    required this.row2CtrlY,
+    required this.row2Bulbs,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
     final stringPaint = Paint()
-      ..color = Colors.white.withOpacity(0.08)
+      ..color = Colors.white.withOpacity(0.18)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-    final bulbCore = Paint()..color = Colors.amberAccent.withOpacity(0.8);
+      ..strokeWidth = 1.5;
+    
+    final bulbCore = Paint()
+      ..color = Colors.amberAccent.withOpacity(0.9)
+      ..style = PaintingStyle.fill;
+
+    // Glowing effect around the bulb
+    final bulbGlow = Paint()
+      ..color = Colors.amberAccent.withOpacity(0.25)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
 
     _drawRow(
       canvas,
-      size,
-      90,
-      150,
-      [0.34, 0.66],
+      row1StartY,
+      row1CtrlY,
+      row1Bulbs,
       bulbCore,
+      bulbGlow,
       stringPaint,
     );
-    _drawRow(canvas, size, 390, 450, [0.48], bulbCore, stringPaint);
+    _drawRow(
+      canvas,
+      row2StartY,
+      row2CtrlY,
+      row2Bulbs,
+      bulbCore,
+      bulbGlow,
+      stringPaint,
+    );
   }
 
   void _drawRow(
     Canvas canvas,
-    Size size,
     double startY,
     double ctrlY,
     List<double> bulbPositions,
     Paint core,
+    Paint glow,
     Paint string,
   ) {
     Path path = Path();
     path.moveTo(0, startY);
-    path.quadraticBezierTo(size.width / 2, ctrlY, size.width, startY);
+    path.quadraticBezierTo(width / 2, ctrlY, width, startY);
     canvas.drawPath(path, string);
 
     for (double t in bulbPositions) {
-      double x = size.width * t;
+      double x = width * t;
       double y =
           (1 - t) * (1 - t) * startY + 2 * (1 - t) * t * ctrlY + t * t * startY;
+      
+      // Draw wire hanging the bulb
       canvas.drawLine(
         Offset(x, y),
         Offset(x, y + 20),
-        Paint()..color = Colors.white10,
+        Paint()
+          ..color = Colors.white.withOpacity(0.15)
+          ..strokeWidth = 1.0,
       );
+      
+      // Draw glowing aura
+      canvas.drawCircle(Offset(x, y + 28), 7, glow);
+      // Draw inner bulb
       canvas.drawCircle(Offset(x, y + 28), 3.5, core);
     }
   }
